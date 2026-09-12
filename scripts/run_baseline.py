@@ -5,10 +5,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from dataclasses import replace  # noqa: E402
+
 from gramurja.baseline import run_smart_rules, run_status_quo  # noqa: E402
 from gramurja.config import DEFAULT_CONFIG  # noqa: E402
 from gramurja.kpi import KPIs, compare  # noqa: E402
 from gramurja.profiles import generate_profiles  # noqa: E402
+from gramurja.weather import fetch_actual_weather  # noqa: E402
+
+WEATHER_START = "2025-01-01"
+WEATHER_END = "2025-12-31"
+
+# The sizing sweep's recommendation, not the reference capacities in DEFAULT_CONFIG.
+# Those exist to scale candidates during a sweep and are far larger than anything
+# worth installing.
+SOLAR_KWP = 3.0
+WIND_KW = 0.0
+BATTERY_KWH = 5.0
+BATTERY_C_RATE = 0.25
 
 ROWS = [
     ("Demand", "demand_kwh", "kWh"),
@@ -39,13 +53,24 @@ def print_table(status_quo: KPIs, smart: KPIs) -> None:
 
 
 def main() -> None:
-    days = 365
-    profiles = generate_profiles(days=days, config=DEFAULT_CONFIG)
+    config = replace(
+        DEFAULT_CONFIG,
+        solar_capacity_kwp=SOLAR_KWP,
+        wind_capacity_kw=WIND_KW,
+        battery_capacity_kwh=BATTERY_KWH,
+        battery_max_charge_kw=BATTERY_KWH * BATTERY_C_RATE,
+        battery_max_discharge_kw=BATTERY_KWH * BATTERY_C_RATE,
+    )
+    weather = fetch_actual_weather(WEATHER_START, WEATHER_END)
+    profiles = generate_profiles(days=365, config=config, weather=weather)
 
-    print(f"Simulating {days} days ({len(profiles)} hourly steps)\n")
+    print(f"Simulating {len(profiles)} hourly steps on measured weather "
+          f"({WEATHER_START}..{WEATHER_END})")
+    print(f"System: {SOLAR_KWP:.0f} kWp solar, {WIND_KW:.0f} kW wind, "
+          f"{BATTERY_KWH:.0f} kWh battery\n")
 
-    status_quo = run_status_quo(profiles, DEFAULT_CONFIG)
-    smart = run_smart_rules(profiles, DEFAULT_CONFIG)
+    status_quo = run_status_quo(profiles, config)
+    smart = run_smart_rules(profiles, config)
 
     print_table(status_quo, smart)
 

@@ -81,9 +81,9 @@ def run_smart_rules(profiles: Profiles, config: FarmConfig = DEFAULT_CONFIG) -> 
     microgrid = build_microgrid(
         profiles,
         config,
-        with_solar=True,
-        with_wind=True,
-        with_battery=True,
+        with_solar=config.solar_capacity_kwp > 0,
+        with_wind=config.wind_capacity_kw > 0,
+        with_battery=config.battery_capacity_kwh > 0,
         diesel_unit=BACKUP_GENSET,
     )
     return compute_kpis(run_rule_based(microgrid), config, diesel_unit=BACKUP_GENSET)

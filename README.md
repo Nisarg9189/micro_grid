@@ -25,27 +25,40 @@ This establishes the two reference points every later savings claim is measured 
 - **Status quo** — rationed grid plus a diesel pumpset, no solar, wind or battery. The
   pumpset is sized to the pump alone, so during an outage it cannot also carry household,
   dairy and cold-storage load. That is what makes reliability fall below 100%.
-- **Solar + wind + battery under rule-based control** — the same hardware the optimizer
-  will use, but with simple rules instead of optimization. The gap between this and the
-  Phase 4 optimizer is what the AI itself contributes.
+- **Solar + battery under rule-based control** — the same hardware the optimiser uses, run
+  by simple rules instead of optimisation. The gap between this and the optimiser is what
+  the optimisation itself contributes.
 
-Current default sizing generates about 160% of annual demand, which leaves the rule-based
-run with very little diesel to remove and roughly 40% curtailment. Size solar and wind
-closer to demand, or scale demand up to a community, before quoting a diesel-reduction
-percentage.
+Both run on measured weather at the sizing the sweep recommends, so the figures line up
+with the rest of this README.
 
 ## Layout
 
 ```
 src/gramurja/
-  config.py     site and economic parameters
-  profiles.py   synthetic hourly solar, load and grid-availability series
+  config.py     site, economic and feeder parameters
+  weather.py    Open-Meteo client, and irradiance/wind to generator output
+  profiles.py   hourly demand, feeder roster, and generation from weather
+  forecast.py   what the controller believes, as distinct from what happens
   farm.py       assembles the pymgrid Microgrid
-  baseline.py   rule-based reference runs
+  baseline.py   status-quo and rule-based reference runs
+  mpc.py        receding-horizon dispatch, as a cvxpy linear program
+  sizing.py     capital costing and the parallel configuration sweep
   kpi.py        diesel, cost, CO2 and reliability from a run log
 scripts/
-  run_baseline.py
+  run_baseline.py       the two reference runs
+  optimize_sizing.py    derive hardware for the Banaskantha farm
+  village_scenario.py   the coastal village case, where wind competes
+  validate_forecast.py  synthesised forecast vs genuine archived forecasts
+report/
+  mid-evaluation.html   results write-up
+  architecture.html     system and agent-layer diagrams
 ```
+
+The capacities in `DEFAULT_CONFIG` are reference values that the sizing sweep scales
+candidates against, not a recommended system. They are deliberately larger than anything
+worth installing, and `wind_capacity_kw` must stay non-zero because candidate scaling
+divides by it. Scripts that run a specific system build their own config instead.
 
 ## Sizing
 
@@ -75,8 +88,52 @@ a third (1,946 vs 1,490 kWh/kWp) and wind by an order of magnitude. Measured win
 site runs a 1.2% capacity factor -- mean speed 2.5 m/s, below cut-in most of the year --
 so wind is not a viable source here regardless of its cost.
 
-Day-ahead forecast error is calibrated against Open-Meteo's own archived model runs for
-this location: 17.5% mean absolute error on daylight irradiance.
+## Forecasts, and how real they are
+
+The controller plans on a day-ahead forecast rather than on the truth. That forecast is
+**synthesised, not downloaded**: `forecast_weather` perturbs the measured irradiance with
+day-correlated noise scaled to the error Open-Meteo's own model actually makes at this
+site, 17.5% mean absolute error on daylight irradiance. Errors persist within a day rather
+than varying hour to hour, because a model that misses a cloud bank is wrong all afternoon
+and white noise would let the optimiser average the mistake away.
+
+Synthesis is necessary because the archive of past forecasts reaches back roughly 92 days,
+which is not a year. Over the window where genuine forecasts *do* exist, the substitution
+can be checked:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/validate_forecast.py
+```
+
+This runs the optimiser three times over the same 93 days of real weather -- once with
+perfect foresight, once on Open-Meteo's genuine archived day-ahead forecasts, and once on
+the synthesised series:
+
+| Forecast | Diesel | Cost | Penalty vs perfect foresight |
+| --- | --- | --- | --- |
+| perfect | 45.8 L | Rs 15,065 | -- |
+| archived, genuine | 51.9 L | Rs 15,622 | Rs 557 |
+| synthesised | 51.6 L | Rs 15,582 | Rs 517 |
+
+The synthesised forecast reproduces **93% of the cost penalty a real forecast imposes**, so
+the annual figures elsewhere in this README are a mild upper bound rather than a different
+kind of claim. Reliability is 100% under all three.
+
+## Another site, where wind competes
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/village_scenario.py
+```
+
+Runs the same engine at Dwarka on the Saurashtra coast, at village scale: twenty farms
+sharing one 80 m turbine, which is plausible where a single farm's mast is not. Hub height
+matters more than the site does -- 18 m to 80 m lifts the capacity factor from 8.6% to
+22.2%, because a farm mast sits in slow surface wind.
+
+There wind misses the optimum by 0.75% and enters it below Rs 60,000/kW, and as it cheapens
+the optimiser buys more of it and retires solar. The engine follows the resource rather
+than carrying a bias against wind; Banaskantha simply has none. Wind is a community
+technology here, not a farm one.
 
 ## Status
 
@@ -103,6 +160,14 @@ Note that the farmer pays that extra cost while the carbon benefit is external, 
 an incentive the farmer rationally buys the smaller system. That gap is an argument aimed
 at the agencies and NGOs in the problem statement rather than at the farmer.
 
-All profiles are synthetic and the economic parameters are planning assumptions. They must
-be replaced with metered data and current Gujarat tariffs before any savings figure is
-published.
+## What is measured and what is not
+
+Solar and wind generation come from measured data for the site, and the forecast error the
+controller runs against is calibrated to this location's real day-ahead error and validated
+against genuine archived forecasts. Demand is not: the household, dairy and cold-storage profiles
+are constructed, and cold storage alone drives roughly 40% of annual load. Irrigation is
+grounded in surveyed pump hours.
+
+Capital costs and tariffs are planning assumptions, and the sizing result is genuinely
+sensitive to battery capital. Replace both with metered demand and vendor quotes before
+publishing any savings figure.
