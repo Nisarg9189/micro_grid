@@ -1,5 +1,7 @@
 # GramUrja AI — Complete Project Explanation
 
+[PROJECT_STARTUP.md](PROJECT_STARTUP.md)
+
 A guide to what this project is, how it works, what the numbers mean, and what it does not
 yet do. Written for teammates, judges and evaluators.
 
