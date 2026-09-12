@@ -1,0 +1,9 @@
+python-microgrid==1.4.1
+
+# python-microgrid 1.4.1 calls np.product, removed in NumPy 2.0, so the
+# scientific stack is pinned to the NumPy 1.x era it was built against.
+numpy==1.26.4
+pandas==2.1.4
+scipy==1.11.4
+matplotlib==3.8.4
+cvxpy==1.4.3

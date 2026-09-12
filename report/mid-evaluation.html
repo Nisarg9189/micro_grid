@@ -1,0 +1,508 @@
+<title>GramUrja AI Mid-Evaluation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+  :root {
+    --ground: #F5F8FA;
+    --surface: #FFFFFF;
+    --surface-sunk: #EEF3F7;
+    --ink: #101820;
+    --ink-soft: #45565F;
+    --ink-faint: #6D7F89;
+    --rule: #D7E1E8;
+    --rule-strong: #B6C6D1;
+    --accent: #0E6470;
+    --accent-soft: #E0EEF0;
+    --solar: #B07A06;
+    --diesel: #A2452C;
+    --grid: #5A6B7A;
+    --battery: #2C7355;
+    --good: #2C7355;
+    --warn: #A2452C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0C1117;
+      --surface: #141C24;
+      --surface-sunk: #1A242E;
+      --ink: #E4EDF3;
+      --ink-soft: #A7B8C4;
+      --ink-faint: #7B8C99;
+      --rule: #25323E;
+      --rule-strong: #354655;
+      --accent: #49B3C0;
+      --accent-soft: #153034;
+      --solar: #DCA53B;
+      --diesel: #D97B5C;
+      --grid: #8CA0B2;
+      --battery: #5CB98C;
+      --good: #5CB98C;
+      --warn: #D97B5C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0C1117;
+    --surface: #141C24;
+    --surface-sunk: #1A242E;
+    --ink: #E4EDF3;
+    --ink-soft: #A7B8C4;
+    --ink-faint: #7B8C99;
+    --rule: #25323E;
+    --rule-strong: #354655;
+    --accent: #49B3C0;
+    --accent-soft: #153034;
+    --solar: #DCA53B;
+    --diesel: #D97B5C;
+    --grid: #8CA0B2;
+    --battery: #5CB98C;
+    --good: #5CB98C;
+    --warn: #D97B5C;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 960px; margin: 0 auto; padding: 0 24px 96px; }
+
+  h1, h2, h3, .label, th, .tile-value, .phase-status {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  .mono, td.num, .tile-value, .tile-delta, code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  header.masthead {
+    padding: 56px 0 32px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.1;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0 0 24px;
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 8px 28px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px; color: var(--ink-faint);
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 500; }
+
+  h2 {
+    font-size: 22px; font-weight: 600; letter-spacing: -0.01em;
+    margin: 0 0 4px; text-wrap: balance;
+  }
+  section { margin-bottom: 52px; }
+  .section-head {
+    display: flex; align-items: baseline; gap: 14px;
+    border-bottom: 1px solid var(--rule-strong);
+    padding-bottom: 10px; margin-bottom: 22px;
+  }
+  .section-head .label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-faint); white-space: nowrap;
+  }
+  p { max-width: 68ch; margin: 0 0 16px; }
+  p.wide { max-width: none; }
+  .lede { font-size: 17px; }
+
+  .tiles {
+    display: grid; gap: 1px; background: var(--rule);
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    border: 1px solid var(--rule); margin-bottom: 8px;
+  }
+  .tile { background: var(--surface); padding: 20px 18px; }
+  .tile .label {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 10px;
+  }
+  .tile-value { font-size: 30px; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+  .tile-value .unit { font-size: 15px; font-weight: 400; color: var(--ink-soft); }
+  .tile-delta { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; }
+  .tile-delta .good { color: var(--good); font-weight: 500; }
+
+  .table-wrap { overflow-x: auto; margin: 0 0 10px; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  caption {
+    caption-side: top; text-align: left; padding: 14px 16px 12px;
+    font-family: "IBM Plex Sans", sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--ink); border-bottom: 1px solid var(--rule);
+  }
+  caption .cond {
+    display: block; font-family: "IBM Plex Mono", monospace; font-weight: 400;
+    font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; letter-spacing: 0.01em;
+  }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--ink-faint);
+    padding: 10px 14px; border-bottom: 1px solid var(--rule-strong); white-space: nowrap;
+  }
+  th.num, td.num { text-align: right; }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.highlight td { background: var(--accent-soft); font-weight: 500; }
+  tr.rule-above td { border-top: 2px solid var(--rule-strong); }
+  td.name { font-family: "IBM Plex Sans", sans-serif; font-size: 13.5px; }
+  .src { color: var(--ink-faint); font-size: 12.5px; }
+
+  .chip {
+    display: inline-block; font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 7px; border: 1px solid currentColor; border-radius: 2px; white-space: nowrap;
+  }
+  .chip.done { color: var(--good); }
+  .chip.next { color: var(--ink-faint); }
+  .chip.solar { color: var(--solar); }
+  .chip.diesel { color: var(--diesel); }
+  .chip.grid { color: var(--grid); }
+  .chip.battery { color: var(--battery); }
+
+  .note {
+    border-left: 3px solid var(--accent); background: var(--surface-sunk);
+    padding: 14px 18px; margin: 0 0 18px; font-size: 14.5px;
+  }
+  .note strong { font-family: "IBM Plex Sans", sans-serif; }
+  .note.caution { border-left-color: var(--warn); }
+
+  ol.findings { counter-reset: f; list-style: none; padding: 0; margin: 0; }
+  ol.findings > li {
+    counter-increment: f; position: relative;
+    padding: 0 0 20px 44px; margin-bottom: 20px; border-bottom: 1px solid var(--rule);
+  }
+  ol.findings > li:last-child { border-bottom: none; }
+  ol.findings > li::before {
+    content: counter(f, decimal-leading-zero);
+    position: absolute; left: 0; top: 2px;
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    color: var(--accent); font-weight: 500;
+  }
+  ol.findings h3 {
+    font-size: 16px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.005em;
+  }
+  ol.findings p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+
+  ul.plain { padding-left: 20px; margin: 0 0 16px; max-width: 68ch; }
+  ul.plain li { margin-bottom: 9px; }
+
+  footer {
+    border-top: 2px solid var(--ink); padding-top: 20px; margin-top: 8px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-faint);
+  }
+  a { color: var(--accent); }
+  a:focus-visible, th:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="page">
+
+<header class="masthead">
+  <div class="eyebrow">HackOut&rsquo;26 &middot; Mid-Evaluation Report</div>
+  <h1>GramUrja AI</h1>
+  <p class="standfirst">A microgrid energy-mix optimiser for Banaskantha farms. Decides in real time how much load each hour is served by solar, battery, the rationed agricultural feeder, the village feeder, or diesel &mdash; minimising cost while holding reliable supply.</p>
+  <div class="meta-row">
+    <span><b>Problem</b> Microgrid Energy Mix Optimizer for Off-Grid Communities</span>
+    <span><b>Site</b> Palanpur, Banaskantha (24.17&deg;N, 72.43&deg;E)</span>
+    <span><b>Simulated</b> 8,760 hours &middot; calendar 2025</span>
+  </div>
+</header>
+
+<section>
+  <div class="section-head"><h2>Headline result</h2><span class="label">recommended system vs. today</span></div>
+  <div class="tiles">
+    <div class="tile">
+      <div class="label">Diesel consumed</div>
+      <div class="tile-value">182 <span class="unit">L/yr</span></div>
+      <div class="tile-delta">from 1,080 L &middot; <span class="good">83.1% cut</span></div>
+    </div>
+    <div class="tile">
+      <div class="label">Annual energy cost</div>
+      <div class="tile-value">&#8377;84,565</div>
+      <div class="tile-delta">from &#8377;167,737 &middot; <span class="good">&#8377;83,172 saved</span></div>
+    </div>
+    <div class="tile">
+      <div class="label">Supply reliability</div>
+      <div class="tile-value">100<span class="unit">%</span></div>
+      <div class="tile-delta">from 94.1% &middot; <span class="good">892 kWh/yr shortfall removed</span></div>
+    </div>
+    <div class="tile">
+      <div class="label">Emissions</div>
+      <div class="tile-value">7,795 <span class="unit">kg</span></div>
+      <div class="tile-delta">from 12,034 kg &middot; <span class="good">35.2% cut</span></div>
+    </div>
+  </div>
+  <p class="src mono" style="margin-top:12px">Cost figures include annualised capital recovery on the installed hardware, not fuel and tariff alone.</p>
+</section>
+
+<section>
+  <div class="section-head"><h2>What the farm looks like today</h2><span class="label">baseline</span></div>
+  <p>A 5&nbsp;HP diesel pumpset drives irrigation. It is a direct-coupled engine turning a pump shaft, so it cannot power anything else &mdash; household, dairy and cold-storage load sit on the village feeder with no backup at all. Gujarat&rsquo;s Jyotigram scheme runs those two feeders separately and deliberately, and the split governs the whole problem: the agricultural feeder is three-phase and rationed to a published eight-hour block, while the village feeder is single-phase and near-continuous but too small to start the pump.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Baseline energy system
+        <span class="cond">simulated 8,760 h &middot; real 2025 weather &middot; no solar, wind or storage</span></caption>
+      <thead><tr><th>Element</th><th>Role</th><th class="num">Capacity</th><th class="num">Cost of energy</th></tr></thead>
+      <tbody>
+        <tr><td class="name"><span class="chip grid">Agricultural feeder</span></td><td>Pump supply, 8&nbsp;h/day rostered</td><td class="num mono">10 kW</td><td class="num mono">&#8377;1.50/kWh</td></tr>
+        <tr><td class="name"><span class="chip grid">Village feeder</span></td><td>Home, dairy, cold storage</td><td class="num mono">3 kW</td><td class="num mono">&#8377;5.00/kWh</td></tr>
+        <tr><td class="name"><span class="chip diesel">Diesel pumpset</span></td><td>Irrigation when feeder is down</td><td class="num mono">3.73 kW</td><td class="num mono">&#8377;73.79/kWh</td></tr>
+        <tr class="rule-above"><td class="name">Annual demand</td><td>Irrigation, home, dairy, cold storage</td><td class="num mono">15,175 kWh</td><td class="num mono">&#8377;167,737/yr</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src mono">Pumpset at 0.75 L/kWh &times; &#8377;98.39/L. A small direct-coupled pumpset really is this inefficient, and it is why the status quo is expensive.</p>
+</section>
+
+<section>
+  <div class="section-head"><h2>What we built</h2><span class="label">phases</span></div>
+  <p>The system is a deterministic forecasting-and-optimisation core. An agent layer is planned on top of it, but every dispatch decision is made by the optimiser, never by a language model.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Delivery status</caption>
+      <thead><tr><th>Phase</th><th>Scope</th><th>Implementation</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="name">1 &nbsp;Simulation</td><td>Hourly microgrid model of the farm</td><td class="src">python-microgrid (pymgrid) 1.4.1</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">2 &nbsp;Baselines</td><td>Status quo and rule-based control</td><td class="src">Two reference runs</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">3 &nbsp;Forecasting</td><td>Solar, load and feeder availability</td><td class="src">Open-Meteo, measured error</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">4 &nbsp;Optimiser</td><td>Receding-horizon dispatch, 24&nbsp;h</td><td class="src">Linear program in cvxpy</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">&mdash; &nbsp;Sizing</td><td>Derive capacity from the load profile</td><td class="src">Parallel sweep, 120 configurations</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">5 &nbsp;Agent layer</td><td>Monitoring, replanning, explanation</td><td class="src">LangChain Deep Agents</td><td><span class="chip next">Planned</span></td></tr>
+        <tr><td class="name">6 &nbsp;Dashboard</td><td>Operator and farmer views</td><td class="src">Web UI</td><td><span class="chip next">Planned</span></td></tr>
+        <tr><td class="name">7 &nbsp;Applied layer</td><td>Irrigation scheduling, energy sharing</td><td class="src">Built on the core engine</td><td><span class="chip next">Planned</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <strong>The optimiser cannot flatter itself.</strong> The linear program only proposes actions; pymgrid then steps the microgrid and remains the authority on physics. An over-optimistic plan would surface as unserved load or overgeneration in the log. Both are zero across every reported run.
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Does optimisation beat rules?</h2><span class="label">result 1</span></div>
+  <p>Each controller was run over the same year, on the same hardware, against the same weather. &ldquo;Oracle&rdquo; sees the future perfectly and is an upper bound; &ldquo;forecast&rdquo; is the honest operating condition.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Controller comparison
+        <span class="cond">real 2025 weather &middot; fixed 2 kWp solar + 5 kWh battery &middot; energy cost only, excludes capital</span></caption>
+      <thead>
+        <tr><th>Metric</th><th class="num">Status quo</th><th class="num">Rule-based</th><th class="num">Optimiser (oracle)</th><th class="num">Optimiser (forecast)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name">Reliability</td><td class="num mono">94.1%</td><td class="num mono">100%</td><td class="num mono">100%</td><td class="num mono">100%</td></tr>
+        <tr><td class="name">Unserved load</td><td class="num mono">892 kWh</td><td class="num mono">0</td><td class="num mono">0</td><td class="num mono">0</td></tr>
+        <tr><td class="name">Diesel</td><td class="num mono">1,080 L</td><td class="num mono">395 L</td><td class="num mono">164 L</td><td class="num mono">197 L</td></tr>
+        <tr><td class="name">Grid import</td><td class="num mono">12,843 kWh</td><td class="num mono">10,876 kWh</td><td class="num mono">11,811 kWh</td><td class="num mono">11,693 kWh</td></tr>
+        <tr class="highlight"><td class="name">Energy cost</td><td class="num mono">&#8377;167,737</td><td class="num mono">&#8377;79,613</td><td class="num mono">&#8377;55,972</td><td class="num mono">&#8377;58,810</td></tr>
+        <tr><td class="name">CO<sub>2</sub></td><td class="num mono">12,034 kg</td><td class="num mono">8,789 kg</td><td class="num mono">8,827 kg</td><td class="num mono">8,833 kg</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The optimiser&rsquo;s advantage over rule-based control is <b>&#8377;23,641 (29.7%)</b> with perfect foresight and <b>&#8377;20,803 (26.1%)</b> with realistic forecasts &mdash; <b>88% of the benefit survives</b> imperfect information. Forecast error costs about 5% of energy cost and does not touch reliability.</p>
+</section>
+
+<section>
+  <div class="section-head"><h2>The optimiser changes what to buy</h2><span class="label">result 2</span></div>
+  <p>Hardware was not assumed. Every combination of solar, wind and battery was simulated across the full year, costed with capital recovered over each asset&rsquo;s life, and the cheapest configuration holding reliability was selected. Running that search under each controller gives different answers &mdash; which is the central finding of the project.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Cost-optimal sizing, by controller
+        <span class="cond">560-configuration sweep &middot; identical demand, prices and reliability floor</span></caption>
+      <thead><tr><th>Controller</th><th class="num">Solar</th><th class="num">Wind</th><th class="num">Battery</th><th class="num">Diesel cut</th><th class="num">Annual total</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Rule-based</td><td class="num mono">2 kWp</td><td class="num mono">0</td><td class="num mono">0 kWh</td><td class="num mono">59.0%</td><td class="num mono">&#8377;86,713</td></tr>
+        <tr class="highlight"><td class="name">Optimiser</td><td class="num mono">2 kWp</td><td class="num mono">0</td><td class="num mono">5 kWh</td><td class="num mono">85.0%</td><td class="num mono">&#8377;79,184</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Under simple rules a battery never earns back its cost, so the optimal system has none. Under optimisation the same battery pays for itself and nearly doubles the diesel displaced. <b>The controller is not a layer on top of the hardware &mdash; it determines which hardware is worth installing.</b></p>
+  <div class="note">
+    <strong>Why.</strong> A myopic controller reacts to the present hour. The optimiser charges the battery during the subsidised agricultural window at &#8377;1.50/kWh and discharges it later against diesel at &#8377;29.52/kWh &mdash; close to a twentyfold spread. Measured over the year, 94% of all battery charging occurs while that feeder is scheduled on.
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Recommended system</h2><span class="label">result 3</span></div>
+  <p>Re-run on measured weather with realistic day-ahead forecasts, the sweep settles on a modest system. Curtailment is 19 kWh across the entire year, meaning almost nothing generated is wasted.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Cheapest configurations holding 99% reliability
+        <span class="cond">real 2025 weather &middot; day-ahead forecasts at measured 17.5% error &middot; 120 configurations</span></caption>
+      <thead><tr><th>Solar</th><th>Wind</th><th>Battery</th><th class="num">Diesel</th><th class="num">Diesel cut</th><th class="num">Capital/yr</th><th class="num">Energy/yr</th><th class="num">Total/yr</th></tr></thead>
+      <tbody>
+        <tr class="highlight"><td class="mono">3 kWp</td><td class="mono">0</td><td class="mono">5 kWh</td><td class="num mono">182 L</td><td class="num mono">83.1%</td><td class="num mono">&#8377;31,695</td><td class="num mono">&#8377;52,870</td><td class="num mono">&#8377;84,565</td></tr>
+        <tr><td class="mono">2 kWp</td><td class="mono">0</td><td class="mono">5 kWh</td><td class="num mono">197 L</td><td class="num mono">81.8%</td><td class="num mono">&#8377;26,104</td><td class="num mono">&#8377;58,829</td><td class="num mono">&#8377;84,933</td></tr>
+        <tr><td class="mono">3 kWp</td><td class="mono">0</td><td class="mono">10 kWh</td><td class="num mono">72 L</td><td class="num mono">93.3%</td><td class="num mono">&#8377;46,619</td><td class="num mono">&#8377;39,406</td><td class="num mono">&#8377;86,025</td></tr>
+        <tr><td class="mono">0</td><td class="mono">0</td><td class="mono">10 kWh</td><td class="num mono">107 L</td><td class="num mono">90.1%</td><td class="num mono">&#8377;29,848</td><td class="num mono">&#8377;58,505</td><td class="num mono">&#8377;88,353</td></tr>
+        <tr><td class="mono">2 kWp</td><td class="mono">0</td><td class="mono">0</td><td class="num mono">396 L</td><td class="num mono">63.4%</td><td class="num mono">&#8377;11,181</td><td class="num mono">&#8377;79,647</td><td class="num mono">&#8377;90,827</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The cost surface is flat &mdash; the leading dozen configurations sit within 7% of one another &mdash; so the recommendation is robust to shifts in the cost assumptions. Notably, <b>&#8377;1,460/yr more buys a 10 kWh battery and lifts the diesel cut from 83% to 93%</b>.</p>
+</section>
+
+<section>
+  <div class="section-head"><h2>Wind: rejected here, selected elsewhere</h2><span class="label">result 4</span></div>
+  <p>The problem statement names wind explicitly, so it was modelled and swept at every capacity. It was excluded from every cost-optimal configuration &mdash; and the reason turns out to be physics rather than price.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Measured wind resource at the site
+        <span class="cond">Open-Meteo reanalysis, calendar 2025, 10 m measurement height</span></caption>
+      <thead><tr><th>Quantity</th><th class="num">Measured</th><th>Consequence</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Mean wind speed</td><td class="num mono">2.5 m/s</td><td class="src">Below the 3 m/s turbine cut-in for most of the year</td></tr>
+        <tr><td class="name">Capacity factor</td><td class="num mono">1.2%</td><td class="src">A 3 kW turbine yields 327 kWh/yr</td></tr>
+        <tr><td class="name">Appearances in optimum</td><td class="num mono">0 of 120</td><td class="src">Dominated by solar at every capacity and price</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Banaskantha is inland northern Gujarat; the state&rsquo;s wind resource sits on the Kutch and Saurashtra coast. A wind turbine here would be a decoration.</p>
+
+  <p>To confirm the engine follows the resource rather than carrying a bias, the same code was run at Dwarka on the Saurashtra coast, at village scale &mdash; twenty farms sharing one 80&nbsp;m turbine, which is plausible where a single farm&rsquo;s 18&nbsp;m mast is not. Hub height turns out to matter more than the site: raising it from 18&nbsp;m to 80&nbsp;m lifts the capacity factor from 8.6% to 22.2%, because a farm mast sits in slow surface wind.</p>
+
+  <div class="table-wrap">
+    <table>
+      <caption>Where wind becomes economic
+        <span class="cond">Dwarka village microgrid &middot; 20 farms, 303,500 kWh/yr &middot; 80 m hub &middot; 150-configuration sweep</span></caption>
+      <thead><tr><th class="num">Wind capital</th><th class="num">Solar</th><th class="num">Wind</th><th class="num">Battery</th><th class="num">Total/yr</th><th>Wind selected</th></tr></thead>
+      <tbody>
+        <tr><td class="num mono">&#8377;70,000/kW</td><td class="num mono">60 kWp</td><td class="num mono">0</td><td class="num mono">100 kWh</td><td class="num mono">&#8377;1,686,963</td><td><span class="chip next">No &mdash; by 0.75%</span></td></tr>
+        <tr class="highlight"><td class="num mono">&#8377;60,000/kW</td><td class="num mono">40 kWp</td><td class="num mono">20 kW</td><td class="num mono">100 kWh</td><td class="num mono">&#8377;1,683,517</td><td><span class="chip solar">Yes</span></td></tr>
+        <tr><td class="num mono">&#8377;50,000/kW</td><td class="num mono">40 kWp</td><td class="num mono">20 kW</td><td class="num mono">100 kWh</td><td class="num mono">&#8377;1,655,608</td><td><span class="chip solar">Yes</span></td></tr>
+        <tr><td class="num mono">&#8377;40,000/kW</td><td class="num mono">40 kWp</td><td class="num mono">40 kW</td><td class="num mono">100 kWh</td><td class="num mono">&#8377;1,614,095</td><td><span class="chip solar">Yes</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>At coastal village scale wind misses the optimum by 0.75% and enters it below <b>&#8377;60,000/kW</b>. As it cheapens the optimiser buys more of it and retires solar &mdash; 60 kWp down to 40 &mdash; trading the two resources on merit. Wind earns its place on timing rather than price: 35% of its output arrives after dark, when solar delivers nothing and the alternative is diesel.</p>
+
+  <div class="note">
+    <strong>The conclusion is about scale, not geography.</strong> Wind is a community technology here, not a farm one. No single farm reaches the hub height that makes it work, which is an argument for the shared village microgrid the problem statement describes.
+  </div>
+
+  <div class="note">
+    <strong>An incidental check.</strong> The Dwarka village works out to &#8377;84,348 and 185 L of diesel per farm per year. The independent single-farm Banaskantha run gave &#8377;84,565 and 182 L. Different site, different scale, different code path, within 0.3%.
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Emissions come from capacity, not control</h2><span class="label">result 5</span></div>
+  <p>Carbon was priced into both the dispatch objective and the sizing objective. Dispatch barely responds: grid power is 0.71 kg CO<sub>2</sub>/kWh and diesel 0.81, so once battery round-trip losses are counted the two are within a few percent and the controller has no cleaner option to switch to. Even at &#8377;50/kg, emissions move under 1%. Capacity is the lever.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Cost-optimal system as carbon is priced in
+        <span class="cond">real weather &middot; farmer&rsquo;s bill excludes the notional carbon charge itself</span></caption>
+      <thead><tr><th class="num">Carbon price</th><th class="num">Solar</th><th class="num">Battery</th><th class="num">Diesel</th><th class="num">CO<sub>2</sub></th><th class="num">CO<sub>2</sub> cut</th><th class="num">Farmer&rsquo;s bill</th></tr></thead>
+      <tbody>
+        <tr class="highlight"><td class="num mono">&#8377;0/kg</td><td class="num mono">3 kWp</td><td class="num mono">5 kWh</td><td class="num mono">182 L</td><td class="num mono">7,795 kg</td><td class="num mono">35.2%</td><td class="num mono">&#8377;84,565</td></tr>
+        <tr><td class="num mono">&#8377;2/kg</td><td class="num mono">3 kWp</td><td class="num mono">5 kWh</td><td class="num mono">182 L</td><td class="num mono">7,793 kg</td><td class="num mono">35.2%</td><td class="num mono">&#8377;84,565</td></tr>
+        <tr><td class="num mono">&#8377;5/kg</td><td class="num mono">5 kWp</td><td class="num mono">10 kWh</td><td class="num mono">62 L</td><td class="num mono">6,120 kg</td><td class="num mono">49.1%</td><td class="num mono">&#8377;89,762</td></tr>
+        <tr><td class="num mono">&#8377;15/kg</td><td class="num mono">8 kWp</td><td class="num mono">20 kWh</td><td class="num mono">15 L</td><td class="num mono">3,743 kg</td><td class="num mono">68.9%</td><td class="num mono">&#8377;117,880</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Expressed as marginal abatement cost, moving from a 35% to a 49% emissions cut costs <b>&#8377;3.10 per kg CO<sub>2</sub></b> avoided &mdash; below most estimates of the social cost of carbon. Pushing on to 69% costs &#8377;8.22/kg.</p>
+  <div class="note">
+    <strong>A split incentive, and a use for this tool.</strong> The farmer pays the extra &#8377;5,200/yr while the carbon benefit accrues to everyone else, so a rational farmer buys the smaller system. An incentive of &#8377;3&ndash;5/kg closes the gap and buys 14 further points of emissions reduction at below social cost. India&rsquo;s own carbon market trades near &#8377;2/kg &mdash; which this model shows is too weak to shift a single sizing decision. That calculation is exactly the decision the electrification agencies and NGOs named in the problem statement exist to make.
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>How the numbers are grounded</h2><span class="label">data and assumptions</span></div>
+  <p>Weather is measured, not modelled. Forecast error is taken from the provider&rsquo;s own archived model runs rather than invented as noise. Costs remain planning assumptions and are the main thing a field pilot would replace.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Parameter provenance</caption>
+      <thead><tr><th>Parameter</th><th class="num">Value</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Solar yield</td><td class="num mono">1,490 kWh/kWp</td><td class="src">Measured &mdash; Open-Meteo archive, Palanpur 2025</td></tr>
+        <tr><td class="name">Day-ahead forecast error</td><td class="num mono">17.5% MAE</td><td class="src">Measured &mdash; Open-Meteo archived model runs, 92 days</td></tr>
+        <tr><td class="name">Mean wind speed</td><td class="num mono">2.5 m/s</td><td class="src">Measured &mdash; Open-Meteo archive</td></tr>
+        <tr><td class="name">Diesel price</td><td class="num mono">&#8377;98.39/L</td><td class="src">Field research</td></tr>
+        <tr><td class="name">Pumpset fuel rate</td><td class="num mono">0.75 L/kWh</td><td class="src">Derived &mdash; 2.8 L/h over a 3.73 kW pump</td></tr>
+        <tr><td class="name">Backup genset fuel rate</td><td class="num mono">0.30 L/kWh</td><td class="src">Engineering assumption</td></tr>
+        <tr><td class="name">Feeder tariffs</td><td class="num mono">&#8377;1.50 / &#8377;5.00</td><td class="src">Assumption &mdash; subsidised agricultural vs. domestic</td></tr>
+        <tr><td class="name">Solar capital</td><td class="num mono">&#8377;50,000/kWp</td><td class="src">Planning assumption &mdash; verify against quotes</td></tr>
+        <tr><td class="name">Battery capital</td><td class="num mono">&#8377;18,000/kWh</td><td class="src">Planning assumption &mdash; result is sensitive to this</td></tr>
+        <tr><td class="name">Discount rate</td><td class="num mono">9% </td><td class="src">Capital recovered over 25/20/10-year asset lives</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>What we learned</h2><span class="label">findings</span></div>
+  <ol class="findings">
+    <li>
+      <h3>Optimisation has capital consequences, not just operating ones</h3>
+      <p>The same search says &ldquo;no battery&rdquo; under rule-based control and &ldquo;5 kWh&rdquo; under optimisation. A controller that changes the bill of materials is doing something a dashboard cannot.</p>
+    </li>
+    <li>
+      <h3>The advantage survives imperfect forecasts</h3>
+      <p>88% of the perfect-foresight benefit is retained once the controller plans on forecasts carrying the site&rsquo;s real 17.5% day-ahead error. Reliability is unaffected.</p>
+    </li>
+    <li>
+      <h3>The value is tariff arbitrage, not weather prediction</h3>
+      <p>At the optimal sizing the battery is charged from the subsidised feeder and discharged against diesel. Knowing the feeder roster matters more than knowing the cloud cover &mdash; the opposite of what we assumed at the outset.</p>
+    </li>
+    <li>
+      <h3>Emissions are decided at purchase, not at runtime</h3>
+      <p>No dispatch policy meaningfully changes CO<sub>2</sub>, because the alternatives are within a few percent of each other. Only installed renewable capacity moves it.</p>
+    </li>
+    <li>
+      <h3>Half the benefit is not artificial intelligence</h3>
+      <p>Replacing the 0.75 L/kWh pumpset with an efficient genset delivers roughly half the diesel reduction at zero capital. We report this because an evaluator will find it, and because it sharpens what the optimiser is actually for.</p>
+    </li>
+    <li>
+      <h3>Assumptions were repeatedly wrong in measurable ways</h3>
+      <p>Our synthetic weather overstated solar by 31% and wind by an order of magnitude; our first baseline overstated the farmer&rsquo;s bill fourfold by letting a pumpset power a milking machine. Each was caught by checking the model against physical reality rather than against expectation.</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <div class="section-head"><h2>Limitations</h2><span class="label">what this does not yet show</span></div>
+  <ul class="plain">
+    <li><b>Demand is synthetic.</b> Household, dairy and cold-storage profiles are constructed, not metered, and cold storage alone drives roughly 40% of demand. Irrigation is grounded in surveyed pump hours.</li>
+    <li><b>Costs are planning figures.</b> Capital costs and tariffs are assumptions; battery capital in particular changes the recommendation.</li>
+    <li><b>One farm, one year.</b> Results are for a single representative site over calendar 2025, with no multi-year weather variability.</li>
+    <li><b>No field validation.</b> Nothing here has been measured against an installed system.</li>
+    <li><b>The agent layer is not built.</b> Phases 5&ndash;7 remain ahead; all present results come from the deterministic core.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="section-head"><h2>Next</h2><span class="label">remaining work</span></div>
+  <ul class="plain">
+    <li>Agent layer over the optimiser for monitoring, replanning and plain-language explanation to the farmer.</li>
+    <li>Operator dashboard and farmer-facing recommendations, driven by the existing engine.</li>
+    <li>Community extension &mdash; several farms sharing generation and storage, which the sizing engine already supports in principle.</li>
+    <li>Replace assumed capital costs with vendor quotes, and synthetic demand with metered data from a pilot site.</li>
+  </ul>
+</section>
+
+<footer>
+  GramUrja AI &middot; mid-evaluation &middot; all figures reproducible from the repository over 8,760 simulated hours
+</footer>
+
+</div>
