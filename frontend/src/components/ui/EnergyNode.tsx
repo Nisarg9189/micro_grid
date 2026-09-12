@@ -7,6 +7,8 @@ export interface EnergyNodeProps {
   status: "ACTIVE" | "STANDBY" | "OFFLINE" | "OPTIMIZING";
   tone?: "orange" | "green" | "blue" | "slate";
   active?: boolean;
+  /** A second, smaller line under the value -- e.g. a tariff or a feeder's availability. */
+  caption?: string;
 }
 
 export function EnergyNode({
@@ -16,6 +18,7 @@ export function EnergyNode({
   status,
   tone = "orange",
   active = true,
+  caption,
 }: EnergyNodeProps) {
   const toneClasses = {
     orange: "border-orange-200 bg-orange-50/70 text-[#EA580C]",
@@ -51,6 +54,9 @@ export function EnergyNode({
       <div className="my-1 font-mono text-xs font-semibold text-slate-700">
         {value}
       </div>
+      {caption && (
+        <div className="mb-1 font-mono text-[9px] text-slate-400">{caption}</div>
+      )}
 
       <span className={`mt-1 rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${statusPills[status]}`}>
         {status}

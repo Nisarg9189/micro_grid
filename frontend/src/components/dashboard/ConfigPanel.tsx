@@ -13,7 +13,7 @@ import { SizingResults } from "./SizingResults";
 // same defaults -- so the two evaluator surfaces answer the same question on the same
 // terms. Everything here feeds the one shared params object every API call reads.
 export function ConfigPanel() {
-  const { params, setParam, setParams, executeSimulation, isLoading } = useSimulationContext();
+  const { params, setParam, setParams, executeSimulation, isLoading, mode } = useSimulationContext();
   const sizing = useSizing();
   // Collapsed by default -- results are the point of the page; the config wall
   // shouldn't be the first thing between a visitor and the numbers they came for.
@@ -23,7 +23,7 @@ export function ConfigPanel() {
   const busy = isLoading || sizing.loading;
 
   return (
-    <Card className="p-6 sm:p-8">
+    <Card id="configuration" className="p-6 sm:p-8">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-4 text-left cursor-pointer"
@@ -39,8 +39,9 @@ export function ConfigPanel() {
             {params.site} &middot; {params.days} days &middot; {params.solar} kWp / {params.wind} kW / {params.battery} kWh
           </h3>
           <p className="text-sm text-slate-500">
-            Change anything below, then run the optimiser on it or let the model size the
-            system itself. Every number on this page comes from that one live simulation.
+            {mode === "auto"
+              ? "AUTO mode: change anything below and the optimiser re-runs on its own a moment later. Every number on this page comes from that one live simulation."
+              : "MANUAL mode: change anything below, then press “Run the optimiser” to apply it. Every number on this page comes from that one live simulation."}
           </p>
         </div>
         <StatusPill tone="slate">{open ? "Collapse" : "Expand"}</StatusPill>
@@ -83,6 +84,14 @@ export function ConfigPanel() {
               <NumberField label="Solar kWp" value={params.solar} step={0.5} unit="kWp" onChange={(v) => setParam("solar", v)} />
               <NumberField label="Wind kW" value={params.wind} step={0.5} unit="kW" onChange={(v) => setParam("wind", v)} />
               <NumberField label="Hub height" value={params.hub_height} step={1} unit="m" onChange={(v) => setParam("hub_height", v)} />
+              <NumberField
+                label="Wind cost"
+                value={params.wind_cost_per_kw}
+                step={5000}
+                min={0}
+                unit="Rs/kW"
+                onChange={(v) => setParam("wind_cost_per_kw", v)}
+              />
               <NumberField label="Battery kWh" value={params.battery} step={1} unit="kWh" onChange={(v) => setParam("battery", v)} />
               <NumberField label="Reserve floor" value={params.battery_reserve} step={0.05} min={0} max={0.9} onChange={(v) => setParam("battery_reserve", v)} />
               <NumberField label="Genset kW" value={params.genset_kw} step={1} unit="kW" onChange={(v) => setParam("genset_kw", v)} />
@@ -155,7 +164,7 @@ export function ConfigPanel() {
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F7931A] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:scale-[1.02] disabled:opacity-60 cursor-pointer"
               >
                 {isLoading ? <RotateCw className="h-3.5 w-3.5 animate-spin" /> : <Cpu className="h-3.5 w-3.5" />}
-                {isLoading ? "Optimising…" : "Run the optimiser"}
+                {isLoading ? "Optimising…" : mode === "auto" ? "Run now" : "Run the optimiser"}
               </button>
             </div>
           </div>

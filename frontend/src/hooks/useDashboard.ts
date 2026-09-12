@@ -1,13 +1,14 @@
-import { useState, useCallback, useMemo } from "react";
-import type { OperatingMode, KPI } from "../types/dashboard";
+import { useMemo } from "react";
+import type { KPI } from "../types/dashboard";
 import { dashboardKPIs } from "../data/dashboardData";
 import { useSimulationContext } from "./SimulationContext";
 import { Activity, Droplets, ShieldCheck, Leaf } from "lucide-react";
 
 export function useDashboard() {
-  const [mode, setMode] = useState<OperatingMode>("auto");
-
-  const { data: simData, source } = useSimulationContext();
+  // mode lives in SimulationContext now, not here -- AUTO actually debounce-reruns the
+  // simulation on every config change there; this used to hold its own copy that nothing
+  // but the header's own highlight state ever read.
+  const { data: simData, source, mode, setMode } = useSimulationContext();
 
   const kpis = useMemo<KPI[]>(() => {
     if (simData && source === "simulation") {
@@ -66,13 +67,9 @@ export function useDashboard() {
     return dashboardKPIs; // Fallback shown only until the real simulation resolves.
   }, [simData, source]);
 
-  const handleModeChange = useCallback((newMode: OperatingMode) => {
-    setMode(newMode);
-  }, []);
-
   return {
     mode,
-    setMode: handleModeChange,
+    setMode,
     kpis,
     source,
   };

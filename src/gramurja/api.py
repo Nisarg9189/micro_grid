@@ -30,14 +30,20 @@ from .forecast import build_forecast, forecast_weather
 from .kpi import KPIs, compute_kpis
 from .mpc import MPCConfig, run_mpc
 from .profiles import generate_profiles
-from .sizing import CapexAssumptions, recommend, sweep
+from .search import SearchConfig, search
+from .sizing import CapexAssumptions
 from .weather import fetch_actual_weather, wind_output_kw
 
 PAGE = Path(__file__).resolve().parents[2] / "report" / "console.html"
 
 # Coarse grids: the point is an answer while someone waits, not the last rupee.
 SIZE_SOLAR = [0, 2, 3, 4, 5, 6, 8]
-SIZE_WIND = [0, 3]
+# 3 kW was the only nonzero option here, which is too small a turbine to ever be worth
+# it regardless of price -- the project's own Dwarka finding needed a 20 kW shared mast
+# to make wind competitive at all, and no price on a 3 kW option could reach that
+# result. 10 and 20 kW give the sizing agent room to actually find it, at whatever
+# wind_cost_per_kw the request asks for.
+SIZE_WIND = [0, 3, 10, 20]
 SIZE_BATTERY = [0, 5, 10, 15, 20]
 
 app = FastAPI(title="GramUrja AI", docs_url="/api/docs")
@@ -65,6 +71,12 @@ class Params(BaseModel):
     c_rate: float = Field(0.25, gt=0, le=2)
     hub_height: float = Field(18.0, ge=5, le=120)
     genset_kw: float = Field(6.0, ge=0, le=500)
+    # 120,000 is the farm-scale planning figure (CapexAssumptions' own default) -- a
+    # single mast for one farm. A shared village mast bought by several farms together
+    # is genuinely cheaper per kW; the project's own Dwarka finding (wind entering the
+    # optimum below Rs 60,000/kW) needs this to be a real input, not a fixed assumption
+    # baked into the sizing agent with no way to reach the price point that changes it.
+    wind_cost_per_kw: float = Field(120_000.0, gt=0, le=500_000)
 
     pump_kw: float = Field(3.73, ge=0, le=100)
     household_kw: float = Field(0.4, ge=0, le=100)
@@ -204,41 +216,59 @@ def simulate(p: Params):
 
 @app.post("/api/size")
 def size(p: Params):
-    """Let the model choose the hardware, rather than being told it."""
+    """Let the model choose the hardware, rather than being told it.
+
+    Runs the bounded branch-and-bound search (search.py), not the exhaustive sweep: the
+    two are proven to agree exactly (see scripts/agent_sizing.py and tests/test_search.py),
+    and the search reaches the same answer while simulating a provably-sound subset of the
+    lattice -- annualised capital alone lower-bounds total cost, so any candidate already
+    costlier than the best system found so far cannot win and is never simulated.
+    """
     config, weather, profiles = _setup(p, reference=True)
     feeders = _feeders(p)
     genset = DieselUnit(max_kw=p.genset_kw, litres_per_kwh=0.30)
     forecast_wx = forecast_weather(weather, np.random.default_rng(7))
 
-    results = sweep(
-        profiles, SIZE_SOLAR, SIZE_WIND, SIZE_BATTERY, config,
-        replace(CapexAssumptions(), carbon_price_inr_per_kg=p.carbon_price),
-        controller="mpc", weather_forecast=forecast_wx, diesel_unit=genset,
-        feeders=feeders, hub_height_m=p.hub_height, progress_every=0,
-    )
     # Capital is recovered per YEAR but energy was only simulated over the horizon, so the
     # two must be put on the same footing before ranking. Left unscaled, capital looks
-    # ~12x too dear on a 30-day run and the search recommends installing nothing at all.
+    # ~12x too dear on a 30-day run and the search recommends installing nothing at all --
+    # this is `search_config.horizon_scale`, applied inside the search's own bound rather
+    # than patched onto its results afterwards.
     scale = 365.0 / p.days
 
-    def annual_total(r):
-        return r.annual_capital_inr + (r.annual_energy_inr + r.annual_carbon_inr) * scale
+    found = search(
+        profiles, SIZE_SOLAR, SIZE_WIND, SIZE_BATTERY, config,
+        replace(CapexAssumptions(), carbon_price_inr_per_kg=p.carbon_price,
+               wind_inr_per_kw=p.wind_cost_per_kw),
+        controller="mpc", weather_forecast=forecast_wx, diesel_unit=genset,
+        feeders=feeders, hub_height_m=p.hub_height,
+        search_config=SearchConfig(reliability_floor_pct=99.0, horizon_scale=scale),
+        progress=False,
+    )
 
-    feasible = sorted((r for r in results if r.kpis.reliability_pct >= 99.0), key=annual_total)
+    lattice_size = found.lattice_size
+    evaluated = found.evaluations
+    pruned = len(found.pruned)
+
+    feasible = found.feasible()
     if not feasible:
-        return {"meta": {"days": p.days, "evaluated": len(results)}, "recommended": None,
-                "candidates": [],
-                "message": "No configuration held 99% reliability. Try a larger genset "
-                           "or a bigger feeder allowance."}
+        return {
+            "meta": {"days": p.days, "evaluated": evaluated, "lattice_size": lattice_size,
+                     "pruned": pruned, "agent": "bounded_search"},
+            "recommended": None, "candidates": [],
+            "message": "No configuration held 99% reliability. Try a larger genset "
+                       "or a bigger feeder allowance.",
+        }
 
     def row(r):
+        total = r.annual_capital_inr + (r.annual_energy_inr + r.annual_carbon_inr) * scale
         return {
             "solar_kwp": r.solar_kwp, "wind_kw": r.wind_kw, "battery_kwh": r.battery_kwh,
             "diesel_litres": round(r.kpis.diesel_litres, 1),
             "reliability_pct": round(r.kpis.reliability_pct, 2),
             "capital_inr": round(r.annual_capital_inr, 0),
             "energy_inr": round(r.annual_energy_inr * scale, 0),
-            "total_inr": round(annual_total(r), 0),
+            "total_inr": round(total, 0),
             "renewable_pct": round(r.kpis.renewable_fraction_pct, 1),
         }
 
@@ -247,13 +277,30 @@ def size(p: Params):
         f" A {p.days}-day window sits in one season, so the extrapolation is rough -"
         " use 60-90 days here, or the CLI sweep for a true annual answer."
     )
+    # Measured directly, not assumed: even at Rs 10,000/kW -- effectively free -- wind
+    # still does not win a single farm's sizing search here. It is not a price problem.
+    # A farm's demand (~15,000 kWh/yr) is too small to use a 10-20 kW turbine's output
+    # without curtailing most of it, so no price makes that turbine pay for itself. Wind
+    # only wins with village-scale demand to absorb it (confirmed separately at a
+    # 20-farm village), which this single-farm endpoint does not model.
+    wind_note = (
+        f" Wind priced at Rs {p.wind_cost_per_kw:,.0f}/kW. A single farm's demand is "
+        "usually too small for any wind turbine to earn back its cost through this "
+        "endpoint, regardless of price -- wind pays off at village scale, where enough "
+        "demand exists to use the output instead of curtailing it."
+    )
     return {
         "meta": {
             "days": p.days,
-            "evaluated": len(results),
+            "evaluated": evaluated,
+            "lattice_size": lattice_size,
+            "pruned": pruned,
+            "agent": "bounded_search",
             "caveat": f"Each candidate simulated over {p.days} days; energy cost is scaled "
                       f"to a year (x{scale:.1f}) so it is comparable with annualised "
-                      f"capital.{seasonal}",
+                      f"capital. The bounded search proved {pruned} of {lattice_size} "
+                      f"configurations could not win without simulating them.{seasonal}"
+                      f"{wind_note}",
         },
         "recommended": row(feasible[0]),
         "candidates": [row(r) for r in feasible[:10]],

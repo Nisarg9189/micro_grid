@@ -22,6 +22,7 @@ from gramurja.search import (
     capital_of,
     lattice,
     opening_order,
+    scaled_total,
     search,
 )
 from gramurja.sizing import (
@@ -223,3 +224,79 @@ def test_skipped_counts_what_was_never_simulated():
 
 def test_an_empty_lattice_does_not_divide_by_zero():
     assert SearchResult(best=None, lattice_size=0).skipped_pct == 0.0
+
+
+# --- horizon_scale: the fix that lets the API call this over a horizon shorter than a
+# year and still get a sound recommendation, not "install nothing" ------------------
+
+
+def _result(capital: float, energy: float, carbon: float = 0.0) -> SizingResult:
+    kpis = type("K", (), {"reliability_pct": 100.0})()
+    return SizingResult(1.0, 0.0, 0.0, kpis, capital, energy, carbon)
+
+
+def test_scaled_total_matches_annual_total_at_a_full_year():
+    """horizon_scale=1.0 must reproduce the plain annual_total_inr exactly.
+
+    Every existing caller (the CLI scripts, the benchmark, the tests above) runs a full
+    year and relies on this being a no-op -- confirmed structurally by the fact none of
+    those tests needed to change when horizon_scale was added.
+    """
+    r = _result(capital=1000.0, energy=500.0, carbon=50.0)
+    assert scaled_total(r, 1.0) == pytest.approx(r.annual_total_inr)
+
+
+def test_scaled_total_shrinks_energy_for_a_short_horizon():
+    """The actual bug this exists to fix: at 30/365 scale, a 30-day energy cost of 500
+    should count as ~41, not the full 500 -- otherwise a cheap-capital, diesel-heavy
+    system looks artificially competitive against one with real solar and battery."""
+    r = _result(capital=1000.0, energy=500.0, carbon=0.0)
+    scale = 30.0 / 365.0
+    assert scaled_total(r, scale) == pytest.approx(1000.0 + 500.0 * scale)
+
+
+def test_capital_alone_still_bounds_the_scaled_total():
+    """The bound's soundness proof only used energy, carbon >= 0 -- unaffected by
+    multiplying them by a non-negative scale. Checked directly rather than trusted."""
+    r = _result(capital=1000.0, energy=500.0, carbon=50.0)
+    for scale in (0.0, 0.1, 1.0, 5.0):
+        assert r.annual_capital_inr <= scaled_total(r, scale)
+
+
+def test_a_scaled_search_prunes_soundly_against_its_own_scaled_incumbent(short_profiles):
+    """The property that would break first if horizon_scale leaked into the bound but
+    not the incumbent comparison, or vice versa: every pruned candidate's raw capital
+    must still be at or above the winning candidate's *scaled* total -- not its unscaled
+    one, which pruning never sees or compares against.
+    """
+    scale = 365.0 / (len(short_profiles) // 24)  # the fixture's own short horizon
+    found = search(
+        short_profiles, SOLAR, WIND, BATTERY,
+        config=DEFAULT_CONFIG, assumptions=ASSUMPTIONS, controller="rbc",
+        search_config=SearchConfig(batch=4, opening_probes=2, horizon_scale=scale),
+        progress=False,
+    )
+    assert found.best is not None
+    assert found.horizon_scale == pytest.approx(scale)
+    winning_total = scaled_total(found.best, scale)
+    for candidate in found.pruned:
+        assert capital_of(candidate, ASSUMPTIONS) >= winning_total
+
+
+def test_feasible_ranks_by_the_scaled_total_not_the_unscaled_one():
+    """A regression test in the shape of the bug: with a small enough scale, a
+    cheap-capital/expensive-energy candidate must outrank an expensive-capital/
+    cheap-energy one, reversing their order under the unscaled total.
+    """
+    cheap_capital_pricey_energy = _result(capital=100.0, energy=1000.0)
+    pricier_capital_cheap_energy = _result(capital=500.0, energy=100.0)
+
+    found = SearchResult(
+        best=None,
+        evaluated=[cheap_capital_pricey_energy, pricier_capital_cheap_energy],
+        lattice_size=2,
+        horizon_scale=0.1,
+    )
+    ranked = found.feasible()
+    assert ranked[0] is cheap_capital_pricey_energy  # 100 + 1000*0.1 = 200
+    assert ranked[1] is pricier_capital_cheap_energy  # 500 + 100*0.1 = 510

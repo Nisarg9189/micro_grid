@@ -29,6 +29,7 @@ export const DEFAULT_PARAMS: Required<SimulationRequest> = {
   c_rate: 0.25,
   hub_height: 18,
   genset_kw: 6,
+  wind_cost_per_kw: 120_000,
   pump_kw: 3.73,
   household_kw: 0.4,
   dairy_kw: 1.2,

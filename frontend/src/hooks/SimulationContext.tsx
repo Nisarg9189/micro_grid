@@ -1,15 +1,23 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { runSimulation } from "../services/simulationApi";
 import type { SimulationResponse, SimulationRequest } from "../types/api";
+import type { OperatingMode } from "../types/dashboard";
 import { DEFAULT_PARAMS } from "../data/presets";
 
 export type DataSource = "live" | "simulation" | "demo" | "offline";
 export type SimParams = Required<SimulationRequest>;
 
+// How long to wait after the last config change before an AUTO-mode run fires. Long
+// enough that typing a number or clicking through several fields doesn't fire a request
+// per keystroke; short enough that it still reads as "the page keeps itself in sync".
+const AUTO_RUN_DEBOUNCE_MS = 800;
+
 interface SimulationContextValue {
   params: SimParams;
   setParam: <K extends keyof SimParams>(key: K, value: SimParams[K]) => void;
   setParams: (partial: Partial<SimParams>) => void;
+  mode: OperatingMode;
+  setMode: (mode: OperatingMode) => void;
   data: SimulationResponse | null;
   source: DataSource;
   isLoading: boolean;
@@ -26,6 +34,7 @@ const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [params, setParamsState] = useState<SimParams>(DEFAULT_PARAMS);
+  const [mode, setMode] = useState<OperatingMode>("auto");
   const [data, setData] = useState<SimulationResponse | null>(null);
   const [source, setSource] = useState<DataSource>("demo"); // starts with demo fallback
   const [isLoading, setIsLoading] = useState(false);
@@ -63,10 +72,28 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // AUTO mode: a config change re-runs the simulation on its own, after a short debounce,
+  // instead of waiting for the "Run the optimiser" button. MANUAL mode does nothing here
+  // -- unchanged from before this existed. Skips the very first render, since the mount
+  // effect above already fires the initial run.
+  const isFirstParamsChange = useRef(true);
+  useEffect(() => {
+    if (isFirstParamsChange.current) {
+      isFirstParamsChange.current = false;
+      return;
+    }
+    if (mode !== "auto") return;
+    const timer = setTimeout(() => {
+      executeSimulation();
+    }, AUTO_RUN_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, mode]);
+
   return (
     <SimulationContext.Provider
       value={{
-        params, setParam, setParams,
+        params, setParam, setParams, mode, setMode,
         data, source, isLoading, error, lastUpdated, executeSimulation,
       }}
     >

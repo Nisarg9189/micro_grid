@@ -14,6 +14,12 @@ export interface SizingResponse {
   meta: {
     days: number;
     evaluated: number;
+    // Present since /api/size started running the bounded search agent instead of the
+    // exhaustive sweep -- lattice_size is every configuration that COULD have been run,
+    // pruned is how many the agent proved couldn't win without simulating them.
+    lattice_size?: number;
+    pruned?: number;
+    agent?: string;
     caveat?: string;
   };
   recommended: SizingCandidate | null;

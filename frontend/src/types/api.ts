@@ -11,6 +11,9 @@ export interface SimulationRequest {
   c_rate?: number;
   hub_height?: number;
   genset_kw?: number;
+  // Rs/kW, defaults to the farm-scale mast price. A shared village mast is genuinely
+  // cheaper -- this only matters to /api/size, which prices wind capacity with it.
+  wind_cost_per_kw?: number;
   pump_kw?: number;
   household_kw?: number;
   dairy_kw?: number;

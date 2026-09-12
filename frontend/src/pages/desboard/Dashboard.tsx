@@ -1,5 +1,6 @@
 import { AppShell } from "../../components/layout/AppShell";
 import { HeroSection } from "../../components/dashboard/HeroSection";
+import { SystemPipeline } from "../../components/dashboard/SystemPipeline";
 import { ConfigPanel } from "../../components/dashboard/ConfigPanel";
 import { KPIGrid } from "../../components/dashboard/KPIGrid";
 import { EnergyFlow } from "../../components/dashboard/EnergyFlow";
@@ -40,16 +41,21 @@ export default function Dashboard() {
         isOptimizing={optState === "optimizing"}
       />
 
-      {/* 2. Configuration -- site, hardware, load and prices, wired to every result below */}
+      {/* 2. How It Works -- the full pipeline, start to end, linking to each section below */}
+      <SystemPipeline />
+
+      {/* 3. Configuration -- site, hardware, load and prices, wired to every result below */}
       <ConfigPanel />
 
-      {/* 3. KPI Summary Grid */}
-      <KPIGrid kpis={kpis} />
+      {/* 4. KPI Summary Grid */}
+      <div id="results">
+        <KPIGrid kpis={kpis} />
+      </div>
 
-      {/* 4. Live Energy Flow Diagram */}
+      {/* 5. Live Energy Flow Diagram */}
       <EnergyFlow />
 
-      {/* 5. Split Section: Telemetry & AI Optimizer */}
+      {/* 6. Split Section: Telemetry & AI Optimizer */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-8 items-start">
         <EnergyTelemetry
           data={energyData}
@@ -75,10 +81,10 @@ export default function Dashboard() {
           on nothing real. A fake control that always reports success is worse than no
           control. See docs/phase2-audit.md, which already flagged this. */}
 
-      {/* 6. Smart Agriculture & Solar Irrigation -- genuinely wired to /api/advice */}
+      {/* 7. Smart Agriculture & Solar Irrigation -- genuinely wired to /api/advice */}
       <AgriculturePanel />
 
-      {/* 7. Community Social & Environmental Impact */}
+      {/* 8. Community Social & Environmental Impact */}
       <CommunityImpact />
     </AppShell>
   );

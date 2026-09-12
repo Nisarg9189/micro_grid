@@ -76,6 +76,15 @@ class SearchConfig:
 
     reliability_floor_pct: float = 99.0
 
+    # Annualised capital is compared against `capital + (energy + carbon) * horizon_scale`,
+    # not the raw annual_total_inr, so a search run over less than a year still ranks
+    # candidates correctly. Left at 1.0 (a full year, so no correction needed), a 30-day
+    # request would compare a whole year of capital against 30 days of energy cost and
+    # rank "install nothing" as cheapest -- the same failure `/api/size`'s wrapper around
+    # `sizing.sweep` already corrects for after the fact. Set this to `365 / days` so the
+    # bound the search prunes against is sound at whatever horizon it is actually run over.
+    horizon_scale: float = 1.0
+
     # Candidates evaluated per round. Zero means one per core, which is what keeps the
     # search competitive on wall clock against a sweep that parallelises everything.
     batch: int = 0
@@ -108,6 +117,11 @@ class SearchResult:
     def skipped_pct(self) -> float:
         return 100.0 * self.skipped / self.lattice_size if self.lattice_size else 0.0
 
+    # Set from the SearchConfig the run used, so feasible() ranks candidates the same
+    # way the search itself did -- not by the unscaled annual_total_inr, which is only
+    # correct when horizon_scale is 1.0 (a full year).
+    horizon_scale: float = 1.0
+
     def feasible(self) -> list[SizingResult]:
         """Evaluated candidates that met the reliability floor, cheapest first."""
         return sorted(
@@ -115,7 +129,7 @@ class SearchResult:
                 r for r in self.evaluated
                 if r.kpis.reliability_pct >= self.reliability_floor_pct
             ),
-            key=lambda r: r.annual_total_inr,
+            key=lambda r: scaled_total(r, self.horizon_scale),
         )
 
 
@@ -143,6 +157,19 @@ def capital_of(
     return annual_capital_cost(
         candidate.solar_kwp, candidate.wind_kw, candidate.battery_kwh, assumptions
     )
+
+
+def scaled_total(result: SizingResult, horizon_scale: float) -> float:
+    """Capital plus energy and carbon scaled to a comparable horizon.
+
+    `capital + (energy + carbon) * horizon_scale`, not the raw `annual_total_inr` --
+    equal to it when horizon_scale is 1.0 (a full year), and otherwise the same
+    per-candidate correction `/api/size` already applies to `sweep`'s results after the
+    fact. Capital alone is still a valid lower bound on this: energy, carbon and
+    horizon_scale are all non-negative, so the pruning in `search()` stays sound at any
+    horizon, not only a full year.
+    """
+    return result.annual_capital_inr + (result.annual_energy_inr + result.annual_carbon_inr) * horizon_scale
 
 
 def opening_order(
@@ -204,6 +231,7 @@ def search(
         best=None,
         lattice_size=len(candidates),
         reliability_floor_pct=search_config.reliability_floor_pct,
+        horizon_scale=search_config.horizon_scale,
     )
     best_total = float("inf")
     capital = {c: capital_of(c, assumptions) for c in candidates}
@@ -240,11 +268,12 @@ def search(
             for future in as_completed(futures):
                 evaluated = future.result()
                 result.evaluated.append(evaluated)
+                total = scaled_total(evaluated, search_config.horizon_scale)
                 if (
                     evaluated.kpis.reliability_pct >= search_config.reliability_floor_pct
-                    and evaluated.annual_total_inr < best_total
+                    and total < best_total
                 ):
-                    best_total = evaluated.annual_total_inr
+                    best_total = total
                     result.best = evaluated
 
             if progress:

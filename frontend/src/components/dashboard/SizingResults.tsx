@@ -1,4 +1,4 @@
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
 import type { SizingResponse, SizingCandidate } from "../../types/sizing";
 
 const fmt = (v: number, digits = 0) => v.toLocaleString(undefined, {
@@ -25,11 +25,23 @@ export function SizingResults({ data, onApply }: SizingResultsProps) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
-      <div className="mb-3 flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div className="mb-2 flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-500">
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         {data.meta.evaluated} configurations evaluated, ranked by annualised total cost at
         99% reliability
       </div>
+      {data.meta.agent === "bounded_search" && data.meta.lattice_size != null && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-[11px] text-emerald-800">
+          <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
+          <span>
+            <strong>Bounded search agent</strong> -- proved{" "}
+            <strong>{data.meta.pruned}</strong> of <strong>{data.meta.lattice_size}</strong>{" "}
+            configurations on the lattice couldn't win without simulating them (installed
+            capital alone already exceeded the best system found), so only{" "}
+            <strong>{data.meta.evaluated}</strong> were actually run.
+          </span>
+        </div>
+      )}
       {data.meta.caveat && (
         <p className="mb-4 text-xs text-slate-500">{data.meta.caveat}</p>
       )}
