@@ -111,21 +111,22 @@ class DispatchLP:
         constraints.append(supply == self.load + self.charge)
 
         economics = config.economics
-        carbon_price = mpc_config.carbon_price_inr_per_kg
+        self.carbon_price = mpc_config.carbon_price_inr_per_kg
         diesel_cost = diesel_unit.litres_per_kwh * economics.diesel_price_per_litre
         diesel_carbon = diesel_unit.litres_per_kwh * economics.co2_kg_per_litre_diesel
-        grid_carbon = economics.grid_co2_kg_per_kwh
+
+        # Import cost varies hour to hour once carbon is priced, because grid intensity
+        # does. Held as a parameter so the problem still compiles once.
+        self.import_cost = [cp.Parameter(h, nonneg=True) for _ in feeders]
 
         cost = (
-            cp.sum((diesel_cost + carbon_price * diesel_carbon) * self.diesel)
+            cp.sum((diesel_cost + self.carbon_price * diesel_carbon) * self.diesel)
             + cp.sum(mpc_config.voll_inr_per_kwh * self.unmet)
             + cp.sum(mpc_config.battery_wear_inr_per_kwh * (self.charge + self.discharge))
             - mpc_config.terminal_soc_value_inr_per_kwh * self.soc[h]
         )
-        for imp, feeder in zip(self.imports, feeders):
-            cost = cost + cp.sum(
-                (feeder.import_price_per_kwh + carbon_price * grid_carbon) * imp
-            )
+        for imp, coefficient in zip(self.imports, self.import_cost):
+            cost = cost + cp.sum(cp.multiply(coefficient, imp))
 
         self.problem = cp.Problem(cp.Minimize(cost), constraints)
 
@@ -134,6 +135,7 @@ class DispatchLP:
         load: np.ndarray,
         renewable: np.ndarray,
         feeder_status: list[np.ndarray],
+        grid_carbon: np.ndarray,
         soc_initial: float,
     ) -> dict:
         self.load.value = load
@@ -141,6 +143,10 @@ class DispatchLP:
         self.soc_initial.value = soc_initial
         for parameter, status in zip(self.feeder_available, feeder_status):
             parameter.value = status
+        for coefficient, feeder in zip(self.import_cost, self.feeders):
+            coefficient.value = (
+                feeder.import_price_per_kwh + self.carbon_price * grid_carbon
+            )
 
         self.problem.solve(solver=cp.CLARABEL)
         if self.problem.status not in ("optimal", "optimal_inaccurate"):
@@ -209,6 +215,9 @@ def run_mpc(
         renewable_total = renewable_total + profiles.wind_kw
 
     feeder_series = [profiles.status_for(feeder) for feeder in feeders]
+    # The daily carbon-intensity shape is a published grid characteristic, not something
+    # the controller has to predict, so it is used directly rather than forecast.
+    carbon_series = profiles.grid_carbon_kg_per_kwh
     if forecast is None:
         forecast = Forecast(
             renewable_kw=renewable_total,
@@ -232,6 +241,7 @@ def run_mpc(
                 _window(believed, actual, step, horizon)
                 for believed, actual in zip(forecast.feeder_status, feeder_series)
             ],
+            grid_carbon=_window(carbon_series, carbon_series, step, horizon),
             soc_initial=soc_initial,
         )
 

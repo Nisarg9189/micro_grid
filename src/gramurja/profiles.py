@@ -25,6 +25,7 @@ class Profiles:
     grid_status: np.ndarray
     grid_status_village: np.ndarray
     grid_status_scheduled: np.ndarray
+    grid_carbon_kg_per_kwh: np.ndarray
 
     def __len__(self) -> int:
         return len(self.load_kw)
@@ -63,6 +64,21 @@ def _wind_output(
     shape = np.clip(seasonal * diurnal * noise, 0.0, None)
     shape = shape / shape.mean() * capacity_factor
     return capacity_kw * np.clip(shape, 0.0, 1.0)
+
+
+def _grid_carbon(hour: np.ndarray, mean_kg_per_kwh: float) -> np.ndarray:
+    """Hourly carbon intensity of grid supply, around a given annual mean.
+
+    A flat intensity gives a battery nothing to work with: storing a kWh to avoid carbon
+    later costs more carbon in round-trip losses than it saves. India's grid is not flat --
+    utility solar pushes midday intensity down, and the post-sunset peak is met by the
+    dirtiest plant on the system -- so the shape is what makes storage worth anything for
+    emissions rather than only for cost.
+    """
+    midday_dip = 0.30 * np.exp(-0.5 * ((hour - 13.0) / 2.6) ** 2)
+    evening_peak = 0.22 * np.exp(-0.5 * ((hour - 20.0) / 2.2) ** 2)
+    shape = 1.0 - midday_dip + evening_peak
+    return mean_kg_per_kwh * shape / shape.mean()
 
 
 def _daily_pump_hours(month: float) -> float:
@@ -137,6 +153,7 @@ def generate_profiles(
         grid_status=grid_status,
         grid_status_village=_generate_village_grid_status(days, rng),
         grid_status_scheduled=grid_status_scheduled,
+        grid_carbon_kg_per_kwh=_grid_carbon(hour, config.economics.grid_co2_kg_per_kwh),
     )
 
 

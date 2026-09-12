@@ -88,7 +88,7 @@ def build_microgrid(
             [
                 np.full(len(profiles), feeder.import_price_per_kwh),
                 np.full(len(profiles), config.economics.grid_export_price_per_kwh),
-                np.full(len(profiles), config.economics.grid_co2_kg_per_kwh),
+                profiles.grid_carbon_kg_per_kwh,
                 profiles.status_for(feeder),
             ]
         )

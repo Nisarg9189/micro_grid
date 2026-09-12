@@ -36,11 +36,13 @@ recommended system, under three controllers.
 | Diesel | 1,080 L | 368 L | 182 L |
 | Energy cost | Rs 167,737 | Rs 71,869 | Rs 52,854 |
 | Reliability | 94.1% | 100% | 100% |
+| CO2 | 12,166 kg | 8,294 kg | 8,303 kg |
 
 The optimiser removes a further 186 L of diesel and Rs 19,015 a year beyond what the rules
-achieve on identical hardware -- 26% of the remaining bill. Note also that it is 30 kg of
-CO2 *worse* than the rules: it displaces diesel partly by importing more grid power, which
-costs less but emits about the same. Emissions are a sizing decision, not a dispatch one.
+achieve on identical hardware -- 26% of the remaining bill. Note that it is 8 kg of CO2
+*worse* than the rules despite burning half the diesel: it displaces diesel partly by
+importing more grid power, and once battery round-trip losses are counted the two emit
+about the same per kWh delivered. Cost and carbon are not the same objective here.
 
 ## Layout
 
@@ -166,19 +168,33 @@ advantage over rule-based control, and forecast error costs about 5% of total en
 Carbon is priced in both the dispatch objective (`MPCConfig`) and the sizing objective
 (`CapexAssumptions`), via `carbon_price_inr_per_kg`.
 
-Pricing carbon does nothing to dispatch. Grid power is 0.71 kg CO2/kWh and diesel 0.81, so
-the two are within a few percent once battery round-trip losses are counted, and there is
-no cleaner option for the controller to switch to. Even at Rs 50/kg, emissions move under
-1%. Emissions are set by what is installed, not by how it is run.
+Grid carbon intensity varies through the day rather than sitting at one number: utility
+solar pushes the midday trough to 0.515 kg/kWh while the post-sunset peak runs 0.890, a
+73% spread around a 0.710 annual mean. That shape is what makes storage worth anything for
+emissions. Against a flat intensity a battery cannot help at all -- storing a kWh to avoid
+carbon later costs more in round-trip losses than it saves, and the optimiser correctly
+refuses to do it at any carbon price, even Rs 50/kg. Against a varying one it can charge
+clean and discharge dirty.
 
-Sizing is where carbon bites. Raising the price buys more solar, and the resulting
-abatement is cheap: going from the cost-optimal system to the Rs 5/kg system cuts emissions
-49% instead of 35% for about Rs 5,200/yr more, an abatement cost near Rs 3/kg -- below most
-estimates of the social cost of carbon. Pushing to 69% costs roughly Rs 8/kg abated.
+| Carbon price | Solar | Battery | Diesel | CO2 | CO2 cut | Farmer's bill | Abatement |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Rs 0/kg | 3 kWp | 5 kWh | 182 L | 8,302 kg | 31.8% | Rs 84,565 | -- |
+| Rs 2/kg | 3 kWp | 5 kWh | 197 L | 8,110 kg | 33.3% | Rs 86,079 | Rs 7.89/kg |
+| Rs 5/kg | 5 kWp | 10 kWh | 94 L | 6,350 kg | 47.8% | Rs 92,709 | Rs 4.17/kg |
+| Rs 15/kg | 8 kWp | 20 kWh | 34 L | 3,855 kg | 68.3% | Rs 119,718 | Rs 7.91/kg |
 
-Note that the farmer pays that extra cost while the carbon benefit is external, so without
-an incentive the farmer rationally buys the smaller system. That gap is an argument aimed
-at the agencies and NGOs in the problem statement rather than at the farmer.
+The farmer's bill column strips out the notional carbon charge, which nobody actually pays;
+abatement is measured against the Rs 0 row.
+
+Two different mechanisms are at work. At Rs 2/kg the hardware does not change at all -- the
+gain is pure dispatch, the optimiser re-timing the battery to charge through the midday
+trough and discharge into the evening peak, worth 192 kg a year for no capital whatsoever.
+From Rs 5/kg upward it buys capacity instead, and capacity is the cheaper lever: Rs 4.17/kg
+against Rs 7.89 for re-timing, because it removes far more carbon per rupee spent.
+
+The farmer pays that extra cost while the carbon benefit is external, so without an
+incentive the farmer rationally buys the smaller system. That gap is an argument aimed at
+the agencies and NGOs in the problem statement rather than at the farmer.
 
 ## What is grounded in data and what is not
 
