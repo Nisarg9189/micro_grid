@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -40,6 +41,14 @@ SIZE_WIND = [0, 3]
 SIZE_BATTERY = [0, 5, 10, 15, 20]
 
 app = FastAPI(title="GramUrja AI", docs_url="/api/docs")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class Params(BaseModel):
