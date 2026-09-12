@@ -52,9 +52,11 @@ def header() -> str:
 
 
 def main() -> None:
-    controller = sys.argv[1] if len(sys.argv) > 1 else "rbc"
+    # Defaults to the optimiser, since that is the system being recommended. Pass "rbc"
+    # to reproduce the rule-based sizing, which buys no battery at all.
+    controller = sys.argv[1] if len(sys.argv) > 1 else "mpc"
     if controller not in ("rbc", "mpc"):
-        raise SystemExit("usage: optimize_sizing.py [rbc|mpc]")
+        raise SystemExit("usage: optimize_sizing.py [mpc|rbc]")
 
     weather = fetch_actual_weather(WEATHER_START, WEATHER_END)
     profiles = generate_profiles(days=365, config=DEFAULT_CONFIG, weather=weather)

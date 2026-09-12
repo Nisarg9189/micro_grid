@@ -7,11 +7,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from dataclasses import replace  # noqa: E402
 
+import numpy as np  # noqa: E402
+
 from gramurja.baseline import run_smart_rules, run_status_quo  # noqa: E402
-from gramurja.config import DEFAULT_CONFIG  # noqa: E402
-from gramurja.kpi import KPIs, compare  # noqa: E402
+from gramurja.config import AGRICULTURAL_FEEDER, DEFAULT_CONFIG, VILLAGE_FEEDER  # noqa: E402
+from gramurja.forecast import build_forecast, forecast_weather  # noqa: E402
+from gramurja.kpi import KPIs, compare, compute_kpis  # noqa: E402
+from gramurja.mpc import run_mpc  # noqa: E402
 from gramurja.profiles import generate_profiles  # noqa: E402
 from gramurja.weather import fetch_actual_weather  # noqa: E402
+
+FEEDERS = (AGRICULTURAL_FEEDER, VILLAGE_FEEDER)
 
 WEATHER_START = "2025-01-01"
 WEATHER_END = "2025-12-31"
@@ -43,13 +49,27 @@ ROWS = [
 ]
 
 
-def print_table(status_quo: KPIs, smart: KPIs) -> None:
-    print(f"{'Metric':<22}{'Unit':<6}{'Status quo':>16}{'Solar+battery RBC':>20}")
-    print("-" * 64)
+def print_table(status_quo: KPIs, rules: KPIs, optimiser: KPIs) -> None:
+    print(f"{'Metric':<22}{'Unit':<6}{'Status quo':>15}{'Rule-based':>14}{'Optimiser':>14}")
+    print("-" * 71)
     for label, field, unit in ROWS:
-        a = getattr(status_quo, field)
-        b = getattr(smart, field)
-        print(f"{label:<22}{unit:<6}{a:>16,.1f}{b:>20,.1f}")
+        print(
+            f"{label:<22}{unit:<6}"
+            f"{getattr(status_quo, field):>15,.1f}"
+            f"{getattr(rules, field):>14,.1f}"
+            f"{getattr(optimiser, field):>14,.1f}"
+        )
+
+
+def print_delta(title: str, delta: dict) -> None:
+    print(f"\n{title}")
+    print("-" * 71)
+    print(f"  Diesel saved            {delta['diesel_litres_saved']:>12,.0f} L "
+          f"({delta['diesel_reduction_pct']:.1f}%)")
+    print(f"  Cost saved              {delta['cost_saved_inr']:>12,.0f} INR "
+          f"({delta['cost_reduction_pct']:.1f}%)")
+    print(f"  CO2 avoided             {delta['co2_avoided_kg']:>12,.0f} kg")
+    print(f"  Reliability change      {delta['reliability_change_pct']:>12,.2f} pp")
 
 
 def main() -> None:
@@ -69,21 +89,29 @@ def main() -> None:
     print(f"System: {SOLAR_KWP:.0f} kWp solar, {WIND_KW:.0f} kW wind, "
           f"{BATTERY_KWH:.0f} kWh battery\n")
 
+    rng = np.random.default_rng(7)
+    forecast = build_forecast(
+        profiles, FEEDERS, forecast_weather(weather, rng), SOLAR_KWP, WIND_KW, rng=rng
+    )
+
     status_quo = run_status_quo(profiles, config)
-    smart = run_smart_rules(profiles, config)
+    rules = run_smart_rules(profiles, config)
+    optimiser = compute_kpis(
+        run_mpc(
+            profiles,
+            config,
+            with_solar=SOLAR_KWP > 0,
+            with_wind=WIND_KW > 0,
+            forecast=forecast,
+        ),
+        config,
+    )
 
-    print_table(status_quo, smart)
-
-    delta = compare(status_quo, smart)
-    print("\nSolar + battery under rule-based control, vs status quo")
-    print("-" * 64)
-    print(f"  Diesel saved            {delta['diesel_litres_saved']:>12,.0f} L "
-          f"({delta['diesel_reduction_pct']:.1f}%)")
-    print(f"  Cost saved              {delta['cost_saved_inr']:>12,.0f} INR "
-          f"({delta['cost_reduction_pct']:.1f}%)")
-    print(f"  CO2 avoided             {delta['co2_avoided_kg']:>12,.0f} kg")
-    print(f"  Reliability change      {delta['reliability_change_pct']:>12,.2f} pp")
-    print("\nThese are the numbers the optimizer must beat in Phase 4.")
+    print_table(status_quo, rules, optimiser)
+    print_delta("Rule-based control, vs status quo", compare(status_quo, rules))
+    print_delta("Optimiser, vs status quo", compare(status_quo, optimiser))
+    print_delta("What the optimiser adds over rules", compare(rules, optimiser))
+    print("\nThe optimiser plans on a day-ahead forecast, not on perfect foresight.")
 
 
 if __name__ == "__main__":

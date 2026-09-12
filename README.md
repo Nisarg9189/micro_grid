@@ -14,23 +14,33 @@ python3.11 -m venv .venv
 Python 3.11 is required. `python-microgrid` 1.4.1 predates NumPy 2.0 and calls the removed
 `np.product`, so the scientific stack is pinned in `requirements.txt`.
 
-## Run the baselines
+## Run it
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/run_baseline.py
 ```
 
-This establishes the two reference points every later savings claim is measured against:
+About twenty seconds, and it prints the whole argument: a year of hourly simulation on the
+recommended system, under three controllers.
 
 - **Status quo** — rationed grid plus a diesel pumpset, no solar, wind or battery. The
   pumpset is sized to the pump alone, so during an outage it cannot also carry household,
   dairy and cold-storage load. That is what makes reliability fall below 100%.
-- **Solar + battery under rule-based control** — the same hardware the optimiser uses, run
-  by simple rules instead of optimisation. The gap between this and the optimiser is what
-  the optimisation itself contributes.
+- **Rule-based** — the same hardware, run by simple rules. This is the honest comparison,
+  because it isolates what the optimisation contributes from what the hardware does.
+- **Optimiser** — the same hardware again, dispatched by the receding-horizon program
+  planning on a day-ahead forecast rather than on perfect foresight.
 
-Both run on measured weather at the sizing the sweep recommends, so the figures line up
-with the rest of this README.
+| | Status quo | Rule-based | Optimiser |
+| --- | --- | --- | --- |
+| Diesel | 1,080 L | 368 L | 182 L |
+| Energy cost | Rs 167,737 | Rs 71,869 | Rs 52,854 |
+| Reliability | 94.1% | 100% | 100% |
+
+The optimiser removes a further 186 L of diesel and Rs 19,015 a year beyond what the rules
+achieve on identical hardware -- 26% of the remaining bill. Note also that it is 30 kg of
+CO2 *worse* than the rules: it displaces diesel partly by importing more grid power, which
+costs less but emits about the same. Emissions are a sizing decision, not a dispatch one.
 
 ## Layout
 
@@ -63,18 +73,20 @@ divides by it. Scripts that run a specific system build their own config instead
 ## Sizing
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/optimize_sizing.py [rbc|mpc]
+PYTHONPATH=src .venv/bin/python scripts/optimize_sizing.py [mpc|rbc]
 ```
 
 Sweeps solar/wind/battery combinations over the full 8,760 hours and picks the cheapest
-that holds reliability, costing capital by recovery factor over each asset's life.
+that holds reliability, costing capital by recovery factor over each asset's life. Defaults
+to the optimiser; pass `rbc` to reproduce the rule-based sizing. Takes a few minutes, since
+each candidate is a full year of simulation.
 
 Sizing depends on the controller, and not by a little. Under rule-based control the optimum
 carries no battery at all; under the optimiser it carries one and roughly doubles the
 diesel reduction. A myopic controller never buys cheap agricultural-feeder power to
 displace diesel later, so it values storage at nothing and sizes it away.
 
-Current recommendation, on real 2025 weather and day-ahead forecasts: **3 kWp solar, no
+Current recommendation, on 2025 reanalysis weather and day-ahead forecasts: **3 kWp solar, no
 wind, 5 kWh battery** -- Rs 84,565/yr all-in against a Rs 167,737/yr status quo, 83% less
 diesel, reliability 94.1% to 100%. The cost surface is flat, with the top dozen
 configurations inside 7%, so the exact sizing is not critical. Spending Rs 1,460/yr more
@@ -82,16 +94,24 @@ for 10 kWh of battery instead of 5 buys another 10 points of diesel reduction.
 
 ## Weather
 
-Solar and wind come from measured Open-Meteo data for Palanpur, cached under `data/weather`.
-Real weather matters: the synthetic profiles this replaced overstated solar yield by about
-a third (1,946 vs 1,490 kWh/kWp) and wind by an order of magnitude. Measured wind at this
-site runs a 1.2% capacity factor -- mean speed 2.5 m/s, below cut-in most of the year --
-so wind is not a viable source here regardless of its cost.
+Solar and wind come from Open-Meteo's archive for Palanpur, cached under `data/weather`.
+
+That archive serves **ERA5 reanalysis**, not station readings: a physics model that
+assimilates real observations onto a grid of roughly 9-30 km cells. It is
+observation-grounded and the standard source for studies of this kind, but it is not a
+pyranometer in a field at Palanpur, and a site survey would be the next step before
+committing capital.
+
+Grounding the model in it still changed the answers substantially. The synthetic profiles
+it replaced overstated solar yield by about a third (1,946 against 1,490 kWh/kWp) and wind
+by an order of magnitude. Reanalysis wind at this site runs a 1.2% capacity factor -- mean
+speed 2.5 m/s, below turbine cut-in most of the year -- so wind is not viable here
+regardless of its cost.
 
 ## Forecasts, and how real they are
 
 The controller plans on a day-ahead forecast rather than on the truth. That forecast is
-**synthesised, not downloaded**: `forecast_weather` perturbs the measured irradiance with
+**synthesised, not downloaded**: `forecast_weather` perturbs the reanalysis irradiance with
 day-correlated noise scaled to the error Open-Meteo's own model actually makes at this
 site, 17.5% mean absolute error on daylight irradiance. Errors persist within a day rather
 than varying hour to hour, because a model that misses a cloud bank is wrong all afternoon
@@ -105,7 +125,7 @@ can be checked:
 PYTHONPATH=src .venv/bin/python scripts/validate_forecast.py
 ```
 
-This runs the optimiser three times over the same 93 days of real weather -- once with
+This runs the optimiser three times over the same 93 days of reanalysis weather -- once with
 perfect foresight, once on Open-Meteo's genuine archived day-ahead forecasts, and once on
 the synthesised series:
 
@@ -160,9 +180,9 @@ Note that the farmer pays that extra cost while the carbon benefit is external, 
 an incentive the farmer rationally buys the smaller system. That gap is an argument aimed
 at the agencies and NGOs in the problem statement rather than at the farmer.
 
-## What is measured and what is not
+## What is grounded in data and what is not
 
-Solar and wind generation come from measured data for the site, and the forecast error the
+Solar and wind generation come from ERA5 reanalysis for the site, and the forecast error the
 controller runs against is calibrated to this location's real day-ahead error and validated
 against genuine archived forecasts. Demand is not: the household, dairy and cold-storage profiles
 are constructed, and cold storage alone drives roughly 40% of annual load. Irrigation is
