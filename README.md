@@ -43,8 +43,8 @@ replacing an inefficient diesel pumpset with a proper generator — no AI involv
 optimiser adds on top is ₹18,867/year and 184 L of diesel beyond what simple rules achieve on
 identical hardware.
 
-**Where to go next:** Section 12 for all results · Section 3 for how the optimiser differs
-from rule-based control · Section 11 for what is real data and what is assumed · Section 15
+**Where to go next:** Section 13 for all results · Section 3 for how the optimiser differs
+from rule-based control · Section 12 for what is real data and what is assumed · Section 16
 for limitations.
 
 ---
@@ -104,12 +104,17 @@ Weather (solar & wind resource)  +  Farm load  +  Feeder availability
 | Receding-horizon dispatch optimiser | **Built** |
 | Hardware sizing search | **Built** |
 | Carbon-aware optimisation | **Built** |
-| Agent layer (monitoring, replanning, farmer explanations) | **Planned, not written** |
-| Operator dashboard and farmer app | **Planned, not written** |
-| Community energy sharing | **Planned, not written** |
+| Irrigation-window search and farmer briefing | **Built** |
+| Farmer message in Gujarati and Hindi, with number verification | **Built** |
+| Operator dashboard, and a live console with an HTTP API | **Built** |
+| Community energy sharing between participants | **Built** |
+| Autonomous agent orchestration | **Planned, not written** |
 
-Everything reported in this document comes from the built components. There is currently
-**no agent, no dashboard and no machine-learning model** in the codebase.
+Everything reported in this document comes from the built components. Two honest
+qualifications: there is **no trained machine-learning model** anywhere in the codebase --
+forecasting is statistical and calibrated to measured error -- and the language model is
+confined to phrasing the advice, never to computing it. Autonomous orchestration, where an
+agent decides on its own when to re-plan, is designed but not written.
 
 ---
 
@@ -144,7 +149,7 @@ turbine power curve (cut-in 3 m/s, rated 12 m/s).
 
 **At Palanpur: mean wind 2.5 m/s, capacity factor 1.2%.** A 3 kW turbine would produce
 327 kWh in a year. Wind is modelled and fully supported, but the recommended system for this
-site contains **0 kW of it**. Section 9 explains where it does get selected.
+site contains **0 kW of it**. Section 10 explains where it does get selected.
 
 ### Farm load
 
@@ -498,7 +503,7 @@ So the search:
 5. Picks the cheapest survivor.
 
 Because each candidate is scored by running the actual controller, **the answer depends on
-which controller runs** — see Section 12.
+which controller runs** — see Section 13.
 
 ### The result (reanalysis weather, realistic forecasts, 120 configurations)
 
@@ -631,9 +636,143 @@ Banaskantha, but none of it is metered.
 
 ---
 
+## 9. Sharing surplus between neighbours
+
+The village model in section 8 puts every load on one bus, which quietly assumes sharing is
+already perfect and free. You cannot price something you have assumed, so this asks the
+question properly: model the village as its actual participants, and run it twice with only
+one thing different.
+
+### The participants are deliberately unalike
+
+That asymmetry is where sharing gets its value.
+
+| Participant | Share of demand | Owns | Connection |
+|---|---|---|---|
+| 20 farms | 61.7% | the panels, the batteries, the pumpsets | agricultural **and** domestic |
+| 100 households | 31.0% | **nothing** | domestic only |
+| Dairy chilling centre | 5.5% | nothing | domestic only |
+| Water supply | 1.8% | nothing | domestic only |
+
+Households are nearly a third of village demand and own none of the generation. A household
+may not draw agricultural-tariff power, and has no backup at all -- so when the domestic
+feeder fails, it simply goes without.
+
+Two things stop the shared case being free by construction, which is the trap in this kind
+of experiment: energy crossing the line loses 3% to distribution, and every connection has
+a capacity limit. Without both, sharing costs nothing and the result means nothing.
+
+### What a village line buys
+
+60 days, Palanpur weather, 60 kWp of solar and 100 kWh of storage, all of it on the farms.
+
+| Line | Diesel | Curtailed | Shared | Unserved | Reliability | Per kWh served |
+|---|---|---|---|---|---|---|
+| 0 kW (alone) | 1,153 L | 1,808 kWh | 0 | 1,394 kWh | 97.12% | Rs 5.38 |
+| 1 kW | 265 L | **0** | 6,944 kWh | 827 kWh | 98.29% | Rs 3.25 |
+| 2 kW | **154 L** | 0 | 9,933 kWh | 517 kWh | 98.93% | **Rs 2.91** |
+| 4 kW | 312 L | 0 | 12,154 kWh | 131 kWh | 99.73% | Rs 3.11 |
+| 8 kW | 370 L | 0 | 12,805 kWh | **0** | **100%** | Rs 3.19 |
+
+**Waste ends at the first kilowatt.** 1,808 kWh of surplus was being curtailed while
+neighbours burned diesel; one kilowatt of line removes all of it. Diesel falls 87% and the
+cost of a delivered kWh falls 46%, from Rs 5.38 to Rs 2.91.
+
+### Who was actually in the dark
+
+The 1,394 kWh that went unserved without sharing breaks down as:
+
+| | Unserved |
+|---|---|
+| Households | 1,149 kWh |
+| Dairy chiller | 197 kWh |
+| Water supply | 48 kWh |
+| **Farms** | **0 kWh** |
+
+The farms are absent from that list. They own the panels, the batteries and the pumpsets,
+and they were never the ones going without. **Sharing is not mainly about saving farmers
+money -- it is about the households and the milk cooler that had no backup at all.** As the
+line grows, that column empties from the bottom up: households 1,149 to 680 to 411 to 103
+to zero.
+
+### Cheapest and fairest are not the same line
+
+A 2 kW line is the cheapest per unit at Rs 2.91, and still leaves 517 kWh unserved. An 8 kW
+line serves everybody for Rs 3.19, about 9% more -- and it deliberately burns *more* diesel,
+370 L against 154 L, because reaching the last household is worth more than the fuel it
+costs. Both rows are reported because that is a policy choice, not a technical one.
+
+Either way the wire is small. Capacity stops being the binding constraint somewhere between
+2 and 8 kW, so this is not an argument for expensive distribution infrastructure.
+
+### Running it as one village
+
+The sweep above prices the line. It does not show how the parts behave once the line is
+there, so the same cluster was run once at 4 kW with every flow attributed to its owner.
+27 metered connections covering 122 premises, one line, one battery fleet, one
+optimisation, solved hour by hour.
+
+| | Demand | Share | Unserved | Diesel |
+|---|---|---|---|---|
+| Farms | 29,868 kWh | 61.7% | 0.0 | 312 L |
+| Households | 15,006 kWh | 31.0% | 103.3 kWh | 0 |
+| Dairy chiller | 2,664 kWh | 5.5% | 28.0 kWh | 0 |
+| Water pumping | 895 kWh | 1.8% | 0.0 | 0 |
+| **Village** | **48,433 kWh** | **100%** | **131.3 kWh** | **312 L** |
+
+99.73% of village demand served at Rs 3.11 per kWh, and no curtailment at all. The supply
+mix is village feeder 39.2%, agricultural feeder 31.4%, own solar 28.6%, **diesel 0.8%**.
+
+**The line runs both ways, which the sweep could not show.**
+
+| | Exported | Imported | Net |
+|---|---|---|---|
+| Farms | 11,602 kWh | 4,121 kWh | **−7,481 kWh** |
+| Households | 470 kWh | 6,310 kWh | +5,840 kWh |
+| Dairy chiller | 65 kWh | 1,053 kWh | +988 kWh |
+| Water pumping | 17 kWh | 306 kWh | +289 kWh |
+
+The farms are the only net exporters -- they own every panel. But the households own *no
+generation* and still push out 470 kWh, so that number needed a mechanism rather than an
+assumption. Checking the hours: **all 165 of them have the agricultural feeder off and the
+village feeder on**, accounting for 100% of the 470 kWh. What crosses is village-feeder
+power relayed to the farms during the Jyotigram ration.
+
+So this is not charity from the farms to the village. It is a two-way trade -- **farm solar
+by day, household grid access during the ration** -- and the farms get something back. That
+is the difference between a scheme people join and one they have to be talked into. It also
+falls out of the feeder rules in section 4 rather than being designed in: households hold a
+domestic connection the farms cannot use for irrigation, and that entitlement turns out to
+be a tradable asset.
+
+The combined day, averaged over 60 days (kW):
+
+| Hour | Demand | Solar | Ag feeder | Village feeder | Battery | Diesel | Shared |
+|---|---|---|---|---|---|---|---|
+| 02 | 13.5 | 0.0 | 6.0 | 8.1 | −0.5 | 0.0 | 1.4 |
+| 07 | **65.3** | 0.1 | 25.0 | 34.1 | +6.5 | 0.0 | **14.3** |
+| 12 | 28.5 | **33.7** | 4.4 | 0.1 | −9.3 | 0.0 | 11.5 |
+| 20 | 47.9 | 0.0 | 16.3 | 30.2 | +0.8 | 0.5 | 9.2 |
+
+Positive battery is discharge, negative is charge. The fleet charges 01--05, 10--17 and
+23--24, and discharges 05--10, 17--21 and 22--23 -- two charge windows for two unrelated
+reasons, the Rs 1.50 agricultural tariff overnight and free surplus solar at midday. At noon
+the feeders nearly switch off, 4.4 kW and 0.1 kW against 33.7 kW of solar. The line peaks at
+07:00 at 14.3 kW, above its 4 kW nameplate because that limit is per connection: 27 of them
+each move their own share.
+
+### Honest notes
+
+This runs 60 days rather than a year, because the cluster program solves a balance for every
+participant and is far heavier than the single-farm one. Read the ratios; the rupees are not
+annual. Households are modelled in blocks of twenty rather than individually -- a hundred
+separate participants would be slow and would imply a precision the load model does not
+have. What matters for sharing is the mix of kinds, not the meter count. And as everywhere
+else in this project, the load profiles are constructed, not metered.
+
 ---
 
-## 9. The wind decision
+## 10. The wind decision
 
 ### Why wind was rejected at Palanpur
 
@@ -679,7 +818,7 @@ work, which is itself an argument for a shared village microgrid.
 
 ---
 
-## 10. Carbon-aware optimisation
+## 11. Carbon-aware optimisation
 
 ### Cost-only versus carbon-aware
 
@@ -736,7 +875,7 @@ through the day. Under a flat intensity assumption, dispatch contributes essenti
 
 ---
 
-## 11. Real data versus modelled assumptions
+## 12. Real data versus modelled assumptions
 
 Being precise about this is the difference between a defensible project and an
 embarrassing one.
@@ -788,7 +927,7 @@ would replace.
 
 ---
 
-## 12. Current results
+## 13. Current results
 
 ### The three controllers
 
@@ -848,7 +987,7 @@ matters here, and it holds in both.)*
 
 ---
 
-## 13. What makes this "AI"
+## 14. What makes this "AI"
 
 This deserves an honest answer, because the term gets stretched.
 
@@ -894,7 +1033,7 @@ Agents orchestrate; the solver decides.
 
 ---
 
-## 14. End-to-end flow
+## 15. End-to-end flow
 
 ```
               Reanalysis weather + forecast error
@@ -933,7 +1072,7 @@ The loop runs every hour. Only the first hour of each 24-hour plan is ever execu
 
 ---
 
-## 15. Limitations and honest caveats
+## 16. Limitations and honest caveats
 
 These are stated plainly because an evaluator will find them anyway, and because a project
 that names its own weaknesses is more trustworthy than one that doesn't.
@@ -954,7 +1093,7 @@ sizing result. Vendor quotes would change the recommendation.
 
 **Grid carbon intensity is an assumed shape.** The 0.515–0.890 kg/kWh daily curve is a
 plausible model of the Indian grid, not measured dispatch data. The carbon conclusions in
-Section 10 depend on it.
+Section 11 depend on it.
 
 **Feeder behaviour is modelled.** The three-slot rotating roster, the 5% and 7% outage rates,
 the 10 kW and 3 kW caps and both tariffs are assumptions about structure, not the published
@@ -971,5 +1110,7 @@ genset delivers a large share of the diesel reduction at zero capital and no int
 whatsoever. This is worth stating clearly, because it sharpens what the optimiser is actually
 for: the arbitrage and reliability gains that rules cannot capture.
 
-**The agent layer does not exist.** Phases for monitoring, farmer-facing explanation and
-community sharing are designed and diagrammed only.
+**Autonomous agent orchestration does not exist.** Farmer-facing explanation and community
+sharing are built and are reported in sections 9 and 14. What is missing is the layer above
+them: an agent that decides on its own when to re-plan, re-fetch weather or escalate. Today
+every run is triggered by a person or a script. That is designed and diagrammed only.

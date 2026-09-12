@@ -114,6 +114,8 @@ loses, check that first -- it is more likely a pricing mismatch than a real find
 | `scripts/validate_forecast.py` | ~30 s | Synthesised forecast vs genuine archived forecasts |
 | `scripts/village_microgrid.py` | ~25 min | The whole village, with feeder routing enforced |
 | `scripts/village_scenario.py` | ~10 min | Coastal village where wind competes |
+| `scripts/energy_sharing.py` | ~5 min | What sharing surplus between neighbours is worth |
+| `scripts/combined_village.py` | ~1 min | Farms, homes, dairy and water as one village |
 | `scripts/farmer_message.py [gujarati\|hindi\|english]` | ~15 s | The message a farmer receives |
 | `scripts/build_dashboard.py` | ~3 min | Regenerates `report/dashboard_data.json` |
 
@@ -215,6 +217,7 @@ src/gramurja/
   advice.py     irrigation window search and the farmer briefing
   explain.py    Gemini for phrasing only, with number verification
   village.py    community load model with pump diversity
+  sharing.py    per-participant cluster model and the village line
   sizing.py     capital costing and the parallel configuration sweep
   kpi.py        diesel, cost, CO2 and reliability from a run log
   api.py        FastAPI endpoints behind the console
@@ -225,6 +228,8 @@ scripts/
   optimize_sizing.py    derive hardware for the Banaskantha farm
   village_scenario.py   the coastal village case, where wind competes
   village_microgrid.py  a whole Banaskantha village, not one farm
+  energy_sharing.py     what a village line between neighbours is worth
+  combined_village.py   the whole village as one run, with every flow attributed
   validate_forecast.py  synthesised forecast vs genuine archived forecasts
   farmer_message.py     the message a farmer receives, via Gemini
   build_dashboard.py    regenerates the dashboard's data
@@ -384,11 +389,97 @@ different load model.
 Every figure in the village load model is an assumption: 2.5 kWh/day per household, a 5 kW
 bulk milk cooler, four hours of water pumping. Structurally realistic, none of it metered.
 
+## Sharing surplus between neighbours
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/energy_sharing.py [days]
+```
+
+The village section above puts every load on one bus, which assumes sharing is already
+perfect and free. This asks the question properly: model the village as its actual
+participants -- 20 farms, 100 homes in blocks, the dairy chiller, the water supply -- and
+run it twice with only the line between them different.
+
+Only the farms own panels and batteries. Households are 31% of demand and own nothing, may
+not draw agricultural-tariff power, and have no backup, so without sharing they simply go
+without. Energy crossing the line loses 3% and every connection is capacity-limited --
+without both, sharing would be free by construction and the result would mean nothing.
+
+60 days, Palanpur, 60 kWp solar and 100 kWh storage on the farms:
+
+| Line | Diesel | Curtailed | Unserved | Reliability | Per kWh served |
+| --- | --- | --- | --- | --- | --- |
+| 0 kW | 1,153 L | 1,808 kWh | 1,394 kWh | 97.12% | Rs 5.38 |
+| 1 kW | 265 L | **0** | 827 kWh | 98.29% | Rs 3.25 |
+| 2 kW | **154 L** | 0 | 517 kWh | 98.93% | **Rs 2.91** |
+| 4 kW | 312 L | 0 | 131 kWh | 99.73% | Rs 3.11 |
+| 8 kW | 370 L | 0 | **0** | **100%** | Rs 3.19 |
+
+One kilowatt of line ends all curtailment. Diesel falls 87% and a delivered kWh falls 46%
+cheaper, from Rs 5.38 to Rs 2.91.
+
+The unserved column is the point. Without sharing it is households 1,149 kWh, dairy 197,
+water 48 -- and farms zero. The farms own the hardware and were never in the dark. Sharing
+is about the homes and the milk cooler that had no backup.
+
+Note that cheapest and fairest differ: 2 kW is cheapest per unit but leaves 517 kWh
+unserved, while 8 kW serves everybody for 9% more and deliberately burns more diesel to
+reach the last household. Both are reported; choosing between them is policy, not
+engineering. Either way the wire is small -- capacity stops binding between 2 and 8 kW.
+
+Runs 60 days rather than a year: the cluster program solves a balance per participant and is
+much heavier than the single-farm one. Read the ratios, not the rupees.
+
+## Running it all as one village
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/combined_village.py [days] [line_kw]
+```
+
+The sweep above prices the line. This shows how the parts behave once it is there: one run
+at a chosen line capacity with every flow attributed to its owner. Defaults to 60 days and
+4 kW. 27 metered connections covering 122 premises, one line, one battery fleet, one
+optimisation.
+
+At 4 kW the village serves 99.73% of 48,433 kWh at Rs 3.11 per kWh with no curtailment.
+Supply is village feeder 39.2%, agricultural feeder 31.4%, own solar 28.6%, diesel 0.8%.
+Demand and shortfall by participant:
+
+| | Demand | Share | Unserved | Diesel |
+| --- | --- | --- | --- | --- |
+| Farms | 29,868 kWh | 61.7% | 0.0 | 312 L |
+| Households | 15,006 kWh | 31.0% | 103.3 kWh | 0 |
+| Dairy chiller | 2,664 kWh | 5.5% | 28.0 kWh | 0 |
+| Water pumping | 895 kWh | 1.8% | 0.0 | 0 |
+
+The interesting output is the export/import table, which shows the line running **both
+ways**. The farms are the only net exporters (11,602 out, 4,121 in) because they own every
+panel. But the households own no generation and still export 470 kWh -- and all 165 hours
+in which they do so are hours when the agricultural feeder is off and the village feeder is
+on. What crosses is village-feeder power relayed to the farms during the ration. Sharing is
+a two-way trade: farm solar by day, household grid access during the ration, so the farms
+get something back rather than simply donating.
+
+The script also prints the combined day hour by hour. The battery fleet charges 01--05,
+10--17 and 23--24 and discharges 05--10, 17--21 and 22--23 -- two charge windows for two
+unrelated reasons, the Rs 1.50 agricultural tariff overnight and free surplus solar at
+midday. At noon the feeders nearly switch off (4.4 and 0.1 kW) against 33.7 kW of solar.
+The line peaks at 07:00 at 14.3 kW, above its 4 kW nameplate because the limit is per
+connection and 27 of them each move their own share.
+
 ## Status
 
-Phases 1-4 are working: simulation, baselines, sizing, forecasting, and a receding-horizon
-optimiser. Under realistic forecasts the optimiser retains 88% of its perfect-foresight
-advantage over rule-based control, and forecast error costs about 5% of total energy cost.
+All seven phases are working: simulation, baselines, forecasting, the receding-horizon
+optimiser, hardware sizing, irrigation advice with farmer-language messages, the dashboard
+and live console, and community energy sharing.
+
+Under realistic forecasts the optimiser retains 88% of its perfect-foresight advantage over
+rule-based control, and forecast error costs about 5% of total energy cost.
+
+What is not built: autonomous agent orchestration, where an agent decides for itself when to
+re-plan rather than being asked. The pieces it would need already exist -- the optimiser is
+a single call, the run log records every flow, and the advice layer turns set-points into
+sentences -- so it is a wrapper over a finished interface rather than a rewrite.
 
 ## Emissions
 
