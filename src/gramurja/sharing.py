@@ -34,11 +34,10 @@ from dataclasses import dataclass, field
 import cvxpy as cp
 import numpy as np
 
-from .config import DEFAULT_CONFIG, DieselUnit, FarmConfig
+from .config import DEFAULT_CONFIG, PUMPSET, DieselUnit, FarmConfig
 from .profiles import HOURS_PER_DAY
 from .weather import WeatherSeries, pv_output_kw
 
-PUMPSET = DieselUnit(max_kw=3.73, litres_per_kwh=0.75)
 BATTERY_EFFICIENCY = 0.95
 
 
@@ -64,8 +63,19 @@ class VillageCluster:
 
     solar_kwp_per_farm: float = 3.0
     battery_kwh_per_farm: float = 5.0
-    genset_kw_per_farm: float = 6.0
     c_rate: float = 0.25
+
+    # What kind of diesel a farm actually has, carried as a unit rather than a loose
+    # fuel rate. config.DieselUnit's docstring is explicit that a direct-coupled pumpset
+    # (0.75 L/kWh) and a proper backup genset (0.30) must not share one number, and this
+    # model previously mixed them: it capped output at the genset's 6 kW while billing
+    # fuel at the pumpset's rate. Keeping the rating and the rate in one object is what
+    # stops that happening again.
+    diesel_unit: DieselUnit = PUMPSET
+
+    @property
+    def genset_kw_per_farm(self) -> float:
+        return self.diesel_unit.max_kw
 
     household_daily_kwh: float = 2.5
     dairy_chiller_kw: float = 5.0
@@ -84,6 +94,21 @@ class VillageCluster:
     line_kw: float = 0.0
     transfer_efficiency: float = 0.97
 
+    # A small charge on every kWh pushed onto the shared line.
+    #
+    # Without it the objective prices nothing for using the line, so whenever a surplus
+    # would otherwise be curtailed the LP is exactly indifferent about WHO routes it:
+    # many different per-participant assignments reach the identical optimal cost, and
+    # which one comes back depends on the solver's pivot order. Aggregate totals are
+    # unaffected -- they are pinned by the energy balances -- but any claim about which
+    # participant exported or imported is meaningless under that indifference.
+    #
+    # This term breaks the tie in the physically sensible direction: routing energy
+    # across the line is slightly worse than not routing it, so nobody moves energy
+    # without a reason. It is set far below any real tariff so it changes which
+    # assignment is optimal without changing what the optimum costs.
+    wheeling_cost_inr_per_kwh: float = 0.01
+
     horizon: int = 24
     voll_inr_per_kwh: float = 100.0
     terminal_soc_value: float = 5.0
@@ -101,6 +126,7 @@ class ClusterResult:
     diesel_kwh: float
     transferred_kwh: float
     energy_cost_inr: float
+    litres_per_kwh: float = PUMPSET.litres_per_kwh
     unmet_by_kind: dict = field(default_factory=dict)
     diesel_by_kind: dict = field(default_factory=dict)
     # Who pushed energy onto the line and who pulled it off, by kind of participant.
@@ -112,10 +138,15 @@ class ClusterResult:
 
     @property
     def diesel_litres(self) -> float:
-        return self.diesel_kwh * 0.75
+        return self.diesel_kwh * self.litres_per_kwh
 
     @property
     def reliability_pct(self) -> float:
+        # Guarded like the identical expression in kpi.py: an empty or all-zero load
+        # window is reachable from a scenario filter or a sizing sweep, and should not
+        # crash the run that produced it.
+        if not self.demand_kwh:
+            return 0.0
         return 100.0 * (self.demand_kwh - self.unmet_kwh) / self.demand_kwh
 
 
@@ -262,12 +293,13 @@ class ClusterLP:
             c.append(self.village[:, step] <= cp.multiply(village_cap.flatten(),
                                                           self.village_up[step]))
 
-        diesel_cost = PUMPSET.litres_per_kwh * economics.diesel_price_per_litre
+        diesel_cost = cluster.diesel_unit.litres_per_kwh * economics.diesel_price_per_litre
         cost = (
             cp.sum(cluster.ag_tariff * self.ag)
             + cp.sum(cluster.village_tariff * self.village)
             + cp.sum(diesel_cost * self.diesel)
             + cp.sum(cluster.voll_inr_per_kwh * self.unmet)
+            + cp.sum(cluster.wheeling_cost_inr_per_kwh * self.to_line)
             - cluster.terminal_soc_value * cp.sum(self.soc[:, h])
         )
         self.problem = cp.Problem(cp.Minimize(cost), c)
@@ -367,7 +399,8 @@ def run_cluster(
         series["transferred"][t] = plan["to_line"].sum()
         series["unmet"][t] = plan["unmet"].sum()
 
-    diesel_cost = PUMPSET.litres_per_kwh * config.economics.diesel_price_per_litre
+    litres_per_kwh = cluster.diesel_unit.litres_per_kwh
+    diesel_cost = litres_per_kwh * config.economics.diesel_price_per_litre
     return ClusterResult(
         line_kw=cluster.line_kw,
         demand_kwh=float(loads.sum()),
@@ -381,8 +414,11 @@ def run_cluster(
         energy_cost_inr=(totals["ag"] * cluster.ag_tariff
                          + totals["village"] * cluster.village_tariff
                          + totals["diesel"] * diesel_cost),
+        litres_per_kwh=litres_per_kwh,
         unmet_by_kind={k: round(v, 1) for k, v in unmet_kind.items()},
-        diesel_by_kind={k: round(v * 0.75, 1) for k, v in diesel_kind.items()},
+        diesel_by_kind={
+            k: round(v * litres_per_kwh, 1) for k, v in diesel_kind.items()
+        },
         exported_by_kind={k: round(v, 1) for k, v in exported_kind.items()},
         imported_by_kind={k: round(v, 1) for k, v in imported_kind.items()},
         demand_by_kind={

@@ -220,7 +220,7 @@
 <header class="masthead">
   <div class="eyebrow">HackOut&rsquo;26 &middot; Mid-Evaluation Report</div>
   <h1>GramUrja AI</h1>
-  <p class="standfirst">A microgrid energy-mix optimiser for Banaskantha farms. Decides in real time how much load each hour is served by solar, battery, the rationed agricultural feeder, the village feeder, or diesel &mdash; minimising cost while holding reliable supply.</p>
+  <p class="standfirst">A microgrid energy-mix optimiser for Banaskantha. Decides hour by hour how much load is served by solar, battery, the rationed agricultural feeder, the village feeder, or diesel &mdash; minimising cost while holding reliable supply. Modelled at three scales: one farm, a whole village, and a village whose neighbours share.</p>
   <div class="meta-row">
     <span><b>Problem</b> Microgrid Energy Mix Optimizer for Off-Grid Communities</span>
     <span><b>Site</b> Palanpur, Banaskantha (24.17&deg;N, 72.43&deg;E)</span>
@@ -229,30 +229,34 @@
 </header>
 
 <section>
-  <div class="section-head"><h2>Headline result</h2><span class="label">recommended system vs. today</span></div>
+  <div class="section-head"><h2>Headline result &mdash; the village</h2><span class="label">recommended system vs. today</span></div>
+  <p>The problem statement names microgrid operators, electrification agencies and NGOs as its users, and asks about off-grid <em>communities</em>. So the headline is a whole village &mdash; 100 households, 20 farms, a dairy chilling centre and the drinking-water supply, 157,273 kWh/year.</p>
   <div class="tiles">
     <div class="tile">
       <div class="label">Diesel consumed</div>
-      <div class="tile-value">182 <span class="unit">L/yr</span></div>
-      <div class="tile-delta">from 1,080 L &middot; <span class="good">83.1% cut</span></div>
+      <div class="tile-value">937 <span class="unit">L/yr</span></div>
+      <div class="tile-delta">from 21,970 L &middot; <span class="good">95.7% cut</span></div>
     </div>
     <div class="tile">
-      <div class="label">Annual energy cost</div>
-      <div class="tile-value">&#8377;84,565</div>
-      <div class="tile-delta">from &#8377;167,737 &middot; <span class="good">&#8377;83,172 saved</span></div>
+      <div class="label">Annual total cost</div>
+      <div class="tile-value">&#8377;1.05<span class="unit">m</span></div>
+      <div class="tile-delta">from &#8377;2.71m &middot; <span class="good">&#8377;16,524 saved per household</span></div>
     </div>
     <div class="tile">
       <div class="label">Supply reliability</div>
       <div class="tile-value">100<span class="unit">%</span></div>
-      <div class="tile-delta">from 94.1% &middot; <span class="good">892 kWh/yr shortfall removed</span></div>
+      <div class="tile-delta">from 94.7% &middot; <span class="good">8,306 kWh/yr shortfall removed</span></div>
     </div>
     <div class="tile">
       <div class="label">Emissions</div>
-      <div class="tile-value">7,795 <span class="unit">kg</span></div>
-      <div class="tile-delta">from 12,034 kg &middot; <span class="good">35.2% cut</span></div>
+      <div class="tile-value">78,116 <span class="unit">kg</span></div>
+      <div class="tile-delta">from 149,246 kg &middot; <span class="good">47.7% cut</span></div>
     </div>
   </div>
-  <p class="src mono" style="margin-top:12px">Cost figures include annualised capital recovery on the installed hardware, not fuel and tariff alone.</p>
+  <p class="src mono" style="margin-top:12px">Recommended system: 40 kWp solar, 0 kW wind, 100 kWh battery. Cost includes annualised capital recovery, not fuel and tariff alone.</p>
+  <div class="note caution">
+    <strong>Read the emissions column against the diesel column.</strong> Diesel falls 95.7% but CO<sub>2</sub> only 47.7%, because displaced diesel is partly replaced by grid import and India&rsquo;s grid is coal-heavy. Any claim of a 95% emissions cut from a 95% diesel cut has not counted the substitution.
+  </div>
 </section>
 
 <section>
@@ -260,8 +264,8 @@
   <p>A 5&nbsp;HP diesel pumpset drives irrigation. It is a direct-coupled engine turning a pump shaft, so it cannot power anything else &mdash; household, dairy and cold-storage load sit on the village feeder with no backup at all. Gujarat&rsquo;s Jyotigram scheme runs those two feeders separately and deliberately, and the split governs the whole problem: the agricultural feeder is three-phase and rationed to a published eight-hour block, while the village feeder is single-phase and near-continuous but too small to start the pump.</p>
   <div class="table-wrap">
     <table>
-      <caption>Baseline energy system
-        <span class="cond">simulated 8,760 h &middot; real 2025 weather &middot; no solar, wind or storage</span></caption>
+      <caption>Baseline energy system, single farm
+        <span class="cond">simulated 8,760 h &middot; ERA5 reanalysis weather, 2025 &middot; no solar, wind or storage</span></caption>
       <thead><tr><th>Element</th><th>Role</th><th class="num">Capacity</th><th class="num">Cost of energy</th></tr></thead>
       <tbody>
         <tr><td class="name"><span class="chip grid">Agricultural feeder</span></td><td>Pump supply, 8&nbsp;h/day rostered</td><td class="num mono">10 kW</td><td class="num mono">&#8377;1.50/kWh</td></tr>
@@ -275,100 +279,198 @@
 </section>
 
 <section>
-  <div class="section-head"><h2>What we built</h2><span class="label">phases</span></div>
-  <p>The system is a deterministic forecasting-and-optimisation core. An agent layer is planned on top of it, but every dispatch decision is made by the optimiser, never by a language model.</p>
+  <div class="section-head"><h2>What we built</h2><span class="label">delivery status</span></div>
+  <p>The system is a deterministic forecasting-and-optimisation core with an applied layer on top. Every dispatch decision is made by a linear program, never by a language model.</p>
   <div class="table-wrap">
     <table>
-      <caption>Delivery status</caption>
+      <caption>Delivery status &mdash; 2,786 lines across 15 modules, 10 runnable scripts</caption>
       <thead><tr><th>Phase</th><th>Scope</th><th>Implementation</th><th>Status</th></tr></thead>
       <tbody>
-        <tr><td class="name">1 &nbsp;Simulation</td><td>Hourly microgrid model of the farm</td><td class="src">python-microgrid (pymgrid) 1.4.1</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">1 &nbsp;Simulation</td><td>Hourly microgrid model</td><td class="src">python-microgrid (pymgrid) 1.4.1</td><td><span class="chip done">Complete</span></td></tr>
         <tr><td class="name">2 &nbsp;Baselines</td><td>Status quo and rule-based control</td><td class="src">Two reference runs</td><td><span class="chip done">Complete</span></td></tr>
-        <tr><td class="name">3 &nbsp;Forecasting</td><td>Solar, load and feeder availability</td><td class="src">Open-Meteo, measured error</td><td><span class="chip done">Complete</span></td></tr>
-        <tr><td class="name">4 &nbsp;Optimiser</td><td>Receding-horizon dispatch, 24&nbsp;h</td><td class="src">Linear program in cvxpy</td><td><span class="chip done">Complete</span></td></tr>
-        <tr><td class="name">&mdash; &nbsp;Sizing</td><td>Derive capacity from the load profile</td><td class="src">Parallel sweep, 120 configurations</td><td><span class="chip done">Complete</span></td></tr>
-        <tr><td class="name">5 &nbsp;Agent layer</td><td>Monitoring, replanning, explanation</td><td class="src">LangChain Deep Agents</td><td><span class="chip next">Planned</span></td></tr>
-        <tr><td class="name">6 &nbsp;Dashboard</td><td>Operator and farmer views</td><td class="src">Web UI</td><td><span class="chip next">Planned</span></td></tr>
-        <tr><td class="name">7 &nbsp;Applied layer</td><td>Irrigation scheduling, energy sharing</td><td class="src">Built on the core engine</td><td><span class="chip next">Planned</span></td></tr>
+        <tr><td class="name">3 &nbsp;Forecasting</td><td>Solar, load and feeder availability</td><td class="src">Open-Meteo, error measured against archived runs</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">4 &nbsp;Optimiser</td><td>Receding-horizon dispatch, 24&nbsp;h</td><td class="src">Linear program in cvxpy (CLARABEL)</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">5 &nbsp;Sizing</td><td>Derive capacity from the load profile</td><td class="src">Parallel sweep, up to 560 configurations</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">6 &nbsp;Console</td><td>Live parameter entry and results</td><td class="src">FastAPI + React, three endpoints</td><td><span class="chip done">Complete</span></td></tr>
+        <tr><td class="name">7 &nbsp;Applied layer</td><td>Irrigation advice, community sharing</td><td class="src">Built on the core engine, 3 languages</td><td><span class="chip done">Complete</span></td></tr>
+        <tr class="rule-above"><td class="name">&mdash; &nbsp;Agent orchestration</td><td>Deciding <em>when</em> to re-plan, unprompted</td><td class="src">LangChain Deep Agents</td><td><span class="chip next">Not built</span></td></tr>
       </tbody>
     </table>
   </div>
   <div class="note">
     <strong>The optimiser cannot flatter itself.</strong> The linear program only proposes actions; pymgrid then steps the microgrid and remains the authority on physics. An over-optimistic plan would surface as unserved load or overgeneration in the log. Both are zero across every reported run.
   </div>
+  <div class="note caution">
+    <strong>Two claims we do not make.</strong> There is <b>no trained ML model anywhere</b> &mdash; forecasting is statistical, calibrated against measured error. And the language model is confined to <b>phrasing</b>: it never computes a number, and generated text is rejected and replaced with deterministic English if any figure in it cannot be traced back to the solver&rsquo;s own output.
+  </div>
 </section>
 
 <section>
   <div class="section-head"><h2>Does optimisation beat rules?</h2><span class="label">result 1</span></div>
-  <p>Each controller was run over the same year, on the same hardware, against the same weather. &ldquo;Oracle&rdquo; sees the future perfectly and is an upper bound; &ldquo;forecast&rdquo; is the honest operating condition.</p>
+  <p>Each controller was run over the same year, on the same hardware, against the same weather. The comparison that matters is the third column against the second &mdash; not against the status quo, because a good rule-based controller already captures most of the easy gain.</p>
   <div class="table-wrap">
     <table>
-      <caption>Controller comparison
-        <span class="cond">real 2025 weather &middot; fixed 2 kWp solar + 5 kWh battery &middot; energy cost only, excludes capital</span></caption>
+      <caption>Controller comparison, single farm
+        <span class="cond">3 kWp solar + 5 kWh battery &middot; energy cost only, excludes the &#8377;31,695/yr annualised capital</span></caption>
       <thead>
-        <tr><th>Metric</th><th class="num">Status quo</th><th class="num">Rule-based</th><th class="num">Optimiser (oracle)</th><th class="num">Optimiser (forecast)</th></tr>
+        <tr><th>Metric</th><th class="num">Status quo</th><th class="num">Rule-based</th><th class="num">Optimiser</th></tr>
       </thead>
       <tbody>
-        <tr><td class="name">Reliability</td><td class="num mono">94.1%</td><td class="num mono">100%</td><td class="num mono">100%</td><td class="num mono">100%</td></tr>
-        <tr><td class="name">Unserved load</td><td class="num mono">892 kWh</td><td class="num mono">0</td><td class="num mono">0</td><td class="num mono">0</td></tr>
-        <tr><td class="name">Diesel</td><td class="num mono">1,080 L</td><td class="num mono">395 L</td><td class="num mono">164 L</td><td class="num mono">197 L</td></tr>
-        <tr><td class="name">Grid import</td><td class="num mono">12,843 kWh</td><td class="num mono">10,876 kWh</td><td class="num mono">11,811 kWh</td><td class="num mono">11,693 kWh</td></tr>
-        <tr class="highlight"><td class="name">Energy cost</td><td class="num mono">&#8377;167,737</td><td class="num mono">&#8377;79,613</td><td class="num mono">&#8377;55,972</td><td class="num mono">&#8377;58,810</td></tr>
-        <tr><td class="name">CO<sub>2</sub></td><td class="num mono">12,034 kg</td><td class="num mono">8,789 kg</td><td class="num mono">8,827 kg</td><td class="num mono">8,833 kg</td></tr>
+        <tr><td class="name">Reliability</td><td class="num mono">94.1%</td><td class="num mono">100%</td><td class="num mono">100%</td></tr>
+        <tr><td class="name">Unserved load</td><td class="num mono">892 kWh</td><td class="num mono">0</td><td class="num mono">0</td></tr>
+        <tr><td class="name">Diesel</td><td class="num mono">1,080 L</td><td class="num mono">368 L</td><td class="num mono">184 L</td></tr>
+        <tr class="highlight"><td class="name">Energy cost</td><td class="num mono">&#8377;167,737</td><td class="num mono">&#8377;71,869</td><td class="num mono">&#8377;53,002</td></tr>
+        <tr><td class="name">CO<sub>2</sub></td><td class="num mono">12,166 kg</td><td class="num mono">8,294 kg</td><td class="num mono">8,291 kg</td></tr>
       </tbody>
     </table>
   </div>
-  <p>The optimiser&rsquo;s advantage over rule-based control is <b>&#8377;23,641 (29.7%)</b> with perfect foresight and <b>&#8377;20,803 (26.1%)</b> with realistic forecasts &mdash; <b>88% of the benefit survives</b> imperfect information. Forecast error costs about 5% of energy cost and does not touch reliability.</p>
+  <p>The optimiser removes <b>184 L of diesel and &#8377;18,867 a year beyond what rules achieve on identical hardware</b> &mdash; 26% of the remaining bill. And <b>88% of that advantage survives</b> once the controller plans on forecasts rather than perfect foresight.</p>
+  <div class="note caution">
+    <strong>Now read the CO<sub>2</sub> row.</strong> Halving the diesel moved emissions by <b>4 kg across a whole year</b>. The optimiser displaces diesel largely by importing more grid power, and once round-trip losses are counted the two emit about the same per kWh delivered. Cost and carbon are not the same objective, and optimising hard for one barely touches the other. What <em>does</em> move carbon is covered in result 6.
+  </div>
 </section>
 
 <section>
-  <div class="section-head"><h2>The optimiser changes what to buy</h2><span class="label">result 2</span></div>
-  <p>Hardware was not assumed. Every combination of solar, wind and battery was simulated across the full year, costed with capital recovered over each asset&rsquo;s life, and the cheapest configuration holding reliability was selected. Running that search under each controller gives different answers &mdash; which is the central finding of the project.</p>
+  <div class="section-head"><h2>The optimiser changes what to buy</h2><span class="label">result 2 &middot; central finding</span></div>
+  <p>Hardware was not assumed. Every combination of solar, wind and battery was simulated across the full year, costed with capital recovered over each asset&rsquo;s life, and the cheapest configuration holding reliability was selected. Running that search under each controller gives different answers.</p>
   <div class="table-wrap">
     <table>
       <caption>Cost-optimal sizing, by controller
-        <span class="cond">560-configuration sweep &middot; identical demand, prices and reliability floor</span></caption>
-      <thead><tr><th>Controller</th><th class="num">Solar</th><th class="num">Wind</th><th class="num">Battery</th><th class="num">Diesel cut</th><th class="num">Annual total</th></tr></thead>
+        <span class="cond">identical demand, prices and reliability floor &middot; only the controller differs</span></caption>
+      <thead><tr><th>Controller</th><th class="num">Solar</th><th class="num">Battery</th><th class="num">Diesel cut</th></tr></thead>
       <tbody>
-        <tr><td class="name">Rule-based</td><td class="num mono">2 kWp</td><td class="num mono">0</td><td class="num mono">0 kWh</td><td class="num mono">59.0%</td><td class="num mono">&#8377;86,713</td></tr>
-        <tr class="highlight"><td class="name">Optimiser</td><td class="num mono">2 kWp</td><td class="num mono">0</td><td class="num mono">5 kWh</td><td class="num mono">85.0%</td><td class="num mono">&#8377;79,184</td></tr>
+        <tr><td class="name">Rule-based</td><td class="num mono">2 kWp</td><td class="num mono">0 kWh</td><td class="num mono">59.0%</td></tr>
+        <tr class="highlight"><td class="name">Optimiser</td><td class="num mono">2 kWp</td><td class="num mono">5 kWh</td><td class="num mono">85.0%</td></tr>
       </tbody>
     </table>
   </div>
-  <p>Under simple rules a battery never earns back its cost, so the optimal system has none. Under optimisation the same battery pays for itself and nearly doubles the diesel displaced. <b>The controller is not a layer on top of the hardware &mdash; it determines which hardware is worth installing.</b></p>
+  <p>Under simple rules a battery never earns back its cost, so the optimal system has none. Under optimisation the same battery pays for itself and nearly doubles the diesel displaced. <b>The controller is not a layer on top of the hardware &mdash; it determines which hardware is worth installing.</b> Tools that size first and dispatch second buy the wrong hardware.</p>
   <div class="note">
-    <strong>Why.</strong> A myopic controller reacts to the present hour. The optimiser charges the battery during the subsidised agricultural window at &#8377;1.50/kWh and discharges it later against diesel at &#8377;29.52/kWh &mdash; close to a twentyfold spread. Measured over the year, 94% of all battery charging occurs while that feeder is scheduled on.
+    <strong>Why.</strong> A myopic controller reacts to the present hour. The optimiser charges the battery during the subsidised agricultural window at &#8377;1.50/kWh and discharges it later against diesel at &#8377;73.79/kWh. Measured over the year, 94% of all battery charging occurs while that feeder is scheduled on.
   </div>
+  <p class="src mono">Those two rows come from a sweep on synthetic weather; the real-weather recommendation is the 3 kWp / 5 kWh system. The comparison between controllers is the point, and it holds in both.</p>
 </section>
 
 <section>
-  <div class="section-head"><h2>Recommended system</h2><span class="label">result 3</span></div>
-  <p>Re-run on measured weather with realistic day-ahead forecasts, the sweep settles on a modest system. Curtailment is 19 kWh across the entire year, meaning almost nothing generated is wasted.</p>
+  <div class="section-head"><h2>Recommended farm system</h2><span class="label">result 3</span></div>
+  <p>Re-run on reanalysis weather with realistic day-ahead forecasts, the sweep settles on a modest system. Comparing like with like &mdash; the status quo has no capital because there is no hardware.</p>
   <div class="table-wrap">
     <table>
-      <caption>Cheapest configurations holding 99% reliability
-        <span class="cond">real 2025 weather &middot; day-ahead forecasts at measured 17.5% error &middot; 120 configurations</span></caption>
-      <thead><tr><th>Solar</th><th>Wind</th><th>Battery</th><th class="num">Diesel</th><th class="num">Diesel cut</th><th class="num">Capital/yr</th><th class="num">Energy/yr</th><th class="num">Total/yr</th></tr></thead>
+      <caption>Total cost of ownership, single farm
+        <span class="cond">capital recovered at 9% over 25/20/10-year asset lives</span></caption>
+      <thead><tr><th>Metric</th><th class="num">Status quo</th><th class="num">Recommended</th></tr></thead>
       <tbody>
-        <tr class="highlight"><td class="mono">3 kWp</td><td class="mono">0</td><td class="mono">5 kWh</td><td class="num mono">182 L</td><td class="num mono">83.1%</td><td class="num mono">&#8377;31,695</td><td class="num mono">&#8377;52,870</td><td class="num mono">&#8377;84,565</td></tr>
-        <tr><td class="mono">2 kWp</td><td class="mono">0</td><td class="mono">5 kWh</td><td class="num mono">197 L</td><td class="num mono">81.8%</td><td class="num mono">&#8377;26,104</td><td class="num mono">&#8377;58,829</td><td class="num mono">&#8377;84,933</td></tr>
-        <tr><td class="mono">3 kWp</td><td class="mono">0</td><td class="mono">10 kWh</td><td class="num mono">72 L</td><td class="num mono">93.3%</td><td class="num mono">&#8377;46,619</td><td class="num mono">&#8377;39,406</td><td class="num mono">&#8377;86,025</td></tr>
-        <tr><td class="mono">0</td><td class="mono">0</td><td class="mono">10 kWh</td><td class="num mono">107 L</td><td class="num mono">90.1%</td><td class="num mono">&#8377;29,848</td><td class="num mono">&#8377;58,505</td><td class="num mono">&#8377;88,353</td></tr>
-        <tr><td class="mono">2 kWp</td><td class="mono">0</td><td class="mono">0</td><td class="num mono">396 L</td><td class="num mono">63.4%</td><td class="num mono">&#8377;11,181</td><td class="num mono">&#8377;79,647</td><td class="num mono">&#8377;90,827</td></tr>
+        <tr><td class="name">Hardware</td><td class="num src">None</td><td class="num mono">3 kWp solar, 5 kWh battery</td></tr>
+        <tr><td class="name">Annualised capital</td><td class="num mono">&#8377;0</td><td class="num mono">&#8377;31,695</td></tr>
+        <tr><td class="name">Energy cost</td><td class="num mono">&#8377;167,737</td><td class="num mono">&#8377;53,014</td></tr>
+        <tr class="highlight"><td class="name">Total per year</td><td class="num mono">&#8377;167,737</td><td class="num mono">&#8377;84,709</td></tr>
+        <tr><td class="name">Diesel</td><td class="num mono">1,080 L</td><td class="num mono">184 L (&minus;83.0%)</td></tr>
+        <tr><td class="name">Reliability</td><td class="num mono">94.1%</td><td class="num mono">100%</td></tr>
+        <tr><td class="name">CO<sub>2</sub></td><td class="num mono">12,166 kg</td><td class="num mono">8,290 kg (&minus;31.9%)</td></tr>
       </tbody>
     </table>
   </div>
-  <p>The cost surface is flat &mdash; the leading dozen configurations sit within 7% of one another &mdash; so the recommendation is robust to shifts in the cost assumptions. Notably, <b>&#8377;1,460/yr more buys a 10 kWh battery and lifts the diesel cut from 83% to 93%</b>.</p>
+  <p><b>Saving &#8377;83,027 per year</b>, about half the farm&rsquo;s total energy bill. The cost surface is flat &mdash; the leading dozen configurations sit within 7% of one another &mdash; so the recommendation is robust to shifts in the cost assumptions.</p>
 </section>
 
 <section>
-  <div class="section-head"><h2>Wind: rejected here, selected elsewhere</h2><span class="label">result 4</span></div>
-  <p>The problem statement names wind explicitly, so it was modelled and swept at every capacity. It was excluded from every cost-optimal configuration &mdash; and the reason turns out to be physics rather than price.</p>
+  <div class="section-head"><h2>A village is not one farm multiplied</h2><span class="label">result 4</span></div>
+  <p>Two things change at village scale, and both matter.</p>
+  <p><b>Diversity.</b> A hundred households do not switch on together, and twenty pumps do not start in the same minute. Each farm has its own fixed start hour, so the aggregate pump peak is <b>29.8 kW against the 74.6 kW they would draw simultaneously &mdash; a diversity factor of 0.40</b>. That spread is the whole economic argument for shared infrastructure, and a model that multiplies one farm by twenty throws it away.</p>
+  <p><b>The peak moves to the evening.</b> On one farm the dominant load is a pump running in daylight, so demand and solar roughly coincide. In a village, households dominate and peak at <b>31 kW at 19:00</b> when solar is zero, against a <b>10.9 kW trough at 13:00</b> when solar is strongest. That mismatch is precisely what storage exists to fix.</p>
+
+  <h3 style="font-size:16px;margin:26px 0 8px">The routing constraint decides the answer</h3>
+  <p>At farm scale, the rule that pumps cannot use the domestic feeder came for free: a 3 kW single-phase connection physically cannot start a 3.73 kW pump. A 50 kW village transformer can, so at village scale the rule has to be stated explicitly. It is a real constraint, not a modelling convenience &mdash; the two supplies are separately sanctioned and separately tariffed, and running a pump off a domestic connection is a different contract, not a clever optimisation.</p>
   <div class="table-wrap">
     <table>
-      <caption>Measured wind resource at the site
-        <span class="cond">Open-Meteo reanalysis, calendar 2025, 10 m measurement height</span></caption>
-      <thead><tr><th>Quantity</th><th class="num">Measured</th><th>Consequence</th></tr></thead>
+      <caption>Enforcing per-feeder routing changed the recommendation completely
+        <span class="cond">same village, same weather, same prices &middot; only the routing rule differs</span></caption>
+      <thead><tr><th>Metric</th><th class="num">Without routing</th><th class="num">With routing</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Solar</td><td class="num mono">20 kWp</td><td class="num mono">40 kWp</td></tr>
+        <tr class="highlight"><td class="name">Battery</td><td class="num mono">0 kWh</td><td class="num mono">100 kWh</td></tr>
+        <tr><td class="name">Diesel</td><td class="num mono">2,014 L</td><td class="num mono">937 L</td></tr>
+        <tr><td class="name">CO<sub>2</sub> cut</td><td class="num mono">33.0%</td><td class="num mono">47.7%</td></tr>
+        <tr><td class="name">Saved per household</td><td class="num mono">&#8377;19,244</td><td class="num mono">&#8377;16,524</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Storage went from worthless to essential. Once pumps genuinely cannot fall back on the domestic feeder, the roughly 69% of hours when the agricultural feeder is down must be covered by solar, battery or diesel &mdash; and storage is the cheapest way. <b>Every one of the ten cheapest configurations now carries a battery</b>, the smallest being 25 kWh.</p>
+  <div class="note caution">
+    <strong>We report the lower number.</strong> The earlier &#8377;19,244 per household was inflated because the model was quietly supplying pumps from a domestic connection. The honest figure is 14% lower, and it is the one in the headline.
+  </div>
+  <div class="note">
+    <strong>An independent consistency check.</strong> Status-quo diesel works out to <b>1,098 L per farm</b> against 1,080 L from the separate single-farm run &mdash; within 1.7%, from a completely different load model and code path.
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Who sharing actually helps</h2><span class="label">result 5</span></div>
+  <p>The village model above puts every load on one bus, which quietly assumes sharing is already perfect and free. You cannot price something you have assumed, so the village was re-modelled as its actual participants and run with only the line between them different. Energy crossing the line loses 3% and every connection is capacity-limited &mdash; without both, sharing would be free by construction and the result would mean nothing.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>What a village line buys
+        <span class="cond">60 days &middot; 20 farms + 100 homes + dairy + water, 48,433 kWh &middot; 60 kWp solar and 100 kWh storage, all on the farms</span></caption>
+      <thead><tr><th class="num">Line</th><th class="num">Diesel</th><th class="num">Curtailed</th><th class="num">Shared</th><th class="num">Unserved</th><th class="num">Reliability</th><th class="num">Per kWh served</th></tr></thead>
+      <tbody>
+        <tr><td class="num mono">0 kW</td><td class="num mono">1,153 L</td><td class="num mono">1,808 kWh</td><td class="num mono">0</td><td class="num mono">1,394 kWh</td><td class="num mono">97.12%</td><td class="num mono">&#8377;5.38</td></tr>
+        <tr class="highlight"><td class="num mono">1 kW</td><td class="num mono">265 L</td><td class="num mono">0</td><td class="num mono">6,944 kWh</td><td class="num mono">827 kWh</td><td class="num mono">98.29%</td><td class="num mono">&#8377;3.25</td></tr>
+        <tr><td class="num mono">2 kW</td><td class="num mono">154 L</td><td class="num mono">0</td><td class="num mono">9,933 kWh</td><td class="num mono">517 kWh</td><td class="num mono">98.93%</td><td class="num mono">&#8377;2.91</td></tr>
+        <tr><td class="num mono">4 kW</td><td class="num mono">312 L</td><td class="num mono">0</td><td class="num mono">12,154 kWh</td><td class="num mono">131 kWh</td><td class="num mono">99.73%</td><td class="num mono">&#8377;3.11</td></tr>
+        <tr><td class="num mono">8 kW</td><td class="num mono">370 L</td><td class="num mono">0</td><td class="num mono">12,805 kWh</td><td class="num mono">0</td><td class="num mono">100%</td><td class="num mono">&#8377;3.19</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><b>Waste ends at the first kilowatt.</b> 1,808 kWh of surplus was being curtailed while neighbours burned diesel; one kilowatt of line removes all of it. Diesel falls 87% and the cost of a delivered kWh falls 46%, from &#8377;5.38 to &#8377;2.91 &mdash; with no new generation installed at all.</p>
+
+  <div class="table-wrap">
+    <table>
+      <caption>Who was in the dark before any sharing
+        <span class="cond">the 1,394 kWh unserved at 0 kW of line</span></caption>
+      <thead><tr><th>Participant</th><th class="num">Share of demand</th><th class="num">Owns</th><th class="num">Unserved</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Households</td><td class="num mono">31.0%</td><td class="num src">nothing</td><td class="num mono">1,149 kWh</td></tr>
+        <tr><td class="name">Dairy chilling centre</td><td class="num mono">5.5%</td><td class="num src">nothing</td><td class="num mono">197 kWh</td></tr>
+        <tr><td class="name">Water supply</td><td class="num mono">1.8%</td><td class="num src">nothing</td><td class="num mono">48 kWh</td></tr>
+        <tr class="highlight"><td class="name">Farms</td><td class="num mono">61.7%</td><td class="num src">every panel, battery and pumpset</td><td class="num mono">0 kWh</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The farms are absent from that list. They own the hardware and were never the ones going without. <b>Sharing is not mainly about saving farmers money &mdash; it is about the households and the milk cooler that had no backup at all.</b> The dairy matters disproportionately: it has a hard deadline twice a day, so reliability there is milk spoilage, not inconvenience.</p>
+
+  <div class="note">
+    <strong>Cheapest and fairest are not the same line.</strong> 2 kW is cheapest per unit at &#8377;2.91 and still leaves 517 kWh unserved. 8 kW serves everybody for &#8377;3.19, about 9% more &mdash; and deliberately burns <em>more</em> diesel, 370 L against 154 L, because reaching the last household is worth more than the fuel it costs. Both rows are reported because that is a policy choice, not a technical one.
+  </div>
+
+  <h3 style="font-size:16px;margin:26px 0 8px">Running it as one village</h3>
+  <p>With the line in place at 4 kW, the same cluster was run once with every flow attributed to its owner &mdash; 27 metered connections covering 122 premises, one battery fleet, one optimisation. It serves 99.73% of demand at &#8377;3.11/kWh with zero curtailment, on a supply mix of village feeder 39.2%, agricultural feeder 31.4%, own solar 28.6% and <b>diesel 0.8%</b>.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>The line runs both ways
+        <span class="cond">60 days at 4 kW &middot; energy crossing the shared line, by participant</span></caption>
+      <thead><tr><th>Participant</th><th class="num">Exported</th><th class="num">Imported</th><th class="num">Net</th></tr></thead>
+      <tbody>
+        <tr class="highlight"><td class="name">Farms</td><td class="num mono">11,602 kWh</td><td class="num mono">4,121 kWh</td><td class="num mono">&minus;7,481 kWh</td></tr>
+        <tr><td class="name">Households</td><td class="num mono">470 kWh</td><td class="num mono">6,310 kWh</td><td class="num mono">+5,840 kWh</td></tr>
+        <tr><td class="name">Dairy chilling centre</td><td class="num mono">65 kWh</td><td class="num mono">1,053 kWh</td><td class="num mono">+988 kWh</td></tr>
+        <tr><td class="name">Water supply</td><td class="num mono">17 kWh</td><td class="num mono">306 kWh</td><td class="num mono">+289 kWh</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The farms are the only net exporters &mdash; they own every panel. But the households own <em>no generation</em> and still push out 470 kWh, so that number needed a mechanism rather than an assumption. Checking the hours: <b>all 165 of them have the agricultural feeder off and the village feeder on</b>, accounting for 100% of the 470 kWh. What crosses is village-feeder power relayed to the farms during the ration.</p>
+  <div class="note">
+    <strong>So this is a trade, not charity.</strong> Farm solar by day, household grid access during the ration &mdash; and the farms get something back. That is the difference between a scheme people join and one they have to be talked into. It falls out of the feeder rules rather than being designed in: households hold a domestic connection the farms cannot use for irrigation, and that entitlement turns out to be a tradable asset.
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Wind: rejected here, selected elsewhere</h2><span class="label">result 6</span></div>
+  <p>The problem statement names wind explicitly, so it was modelled and swept at every capacity. It was excluded from every cost-optimal configuration &mdash; and the reason is physics rather than price.</p>
+  <div class="table-wrap">
+    <table>
+      <caption>Wind resource at the site
+        <span class="cond">Open-Meteo ERA5 reanalysis, calendar 2025, 10 m measurement height</span></caption>
+      <thead><tr><th>Quantity</th><th class="num">Value</th><th>Consequence</th></tr></thead>
       <tbody>
         <tr><td class="name">Mean wind speed</td><td class="num mono">2.5 m/s</td><td class="src">Below the 3 m/s turbine cut-in for most of the year</td></tr>
         <tr><td class="name">Capacity factor</td><td class="num mono">1.2%</td><td class="src">A 3 kW turbine yields 327 kWh/yr</td></tr>
@@ -377,9 +479,7 @@
     </table>
   </div>
   <p>Banaskantha is inland northern Gujarat; the state&rsquo;s wind resource sits on the Kutch and Saurashtra coast. A wind turbine here would be a decoration.</p>
-
   <p>To confirm the engine follows the resource rather than carrying a bias, the same code was run at Dwarka on the Saurashtra coast, at village scale &mdash; twenty farms sharing one 80&nbsp;m turbine, which is plausible where a single farm&rsquo;s 18&nbsp;m mast is not. Hub height turns out to matter more than the site: raising it from 18&nbsp;m to 80&nbsp;m lifts the capacity factor from 8.6% to 22.2%, because a farm mast sits in slow surface wind.</p>
-
   <div class="table-wrap">
     <table>
       <caption>Where wind becomes economic
@@ -393,58 +493,74 @@
       </tbody>
     </table>
   </div>
-
   <p>At coastal village scale wind misses the optimum by 0.75% and enters it below <b>&#8377;60,000/kW</b>. As it cheapens the optimiser buys more of it and retires solar &mdash; 60 kWp down to 40 &mdash; trading the two resources on merit. Wind earns its place on timing rather than price: 35% of its output arrives after dark, when solar delivers nothing and the alternative is diesel.</p>
-
   <div class="note">
-    <strong>The conclusion is about scale, not geography.</strong> Wind is a community technology here, not a farm one. No single farm reaches the hub height that makes it work, which is an argument for the shared village microgrid the problem statement describes.
-  </div>
-
-  <div class="note">
-    <strong>An incidental check.</strong> The Dwarka village works out to &#8377;84,348 and 185 L of diesel per farm per year. The independent single-farm Banaskantha run gave &#8377;84,565 and 182 L. Different site, different scale, different code path, within 0.3%.
+    <strong>The conclusion is about scale, not geography.</strong> Wind is a community technology here, not a farm one. No single farm reaches the hub height that makes it work, which is itself an argument for the shared village microgrid the problem statement describes.
   </div>
 </section>
 
 <section>
-  <div class="section-head"><h2>Emissions come from capacity, not control</h2><span class="label">result 5</span></div>
-  <p>Carbon was priced into both the dispatch objective and the sizing objective. Dispatch barely responds: grid power is 0.71 kg CO<sub>2</sub>/kWh and diesel 0.81, so once battery round-trip losses are counted the two are within a few percent and the controller has no cleaner option to switch to. Even at &#8377;50/kg, emissions move under 1%. Capacity is the lever.</p>
+  <div class="section-head"><h2>What actually moves emissions</h2><span class="label">result 7</span></div>
+  <p>Result 1 showed that halving diesel through smarter dispatch moved CO<sub>2</sub> by 4 kg in a year. That is true under a <em>flat</em> grid carbon factor, and it was our conclusion for some time. It is only half the story. Once grid carbon intensity is allowed to vary through the day &mdash; 0.515 kg/kWh at the midday solar trough against 0.890 in the evening peak, around a 0.710 mean &mdash; carbon arbitrage appears and dispatch starts to matter.</p>
   <div class="table-wrap">
     <table>
-      <caption>Cost-optimal system as carbon is priced in
-        <span class="cond">real weather &middot; farmer&rsquo;s bill excludes the notional carbon charge itself</span></caption>
-      <thead><tr><th class="num">Carbon price</th><th class="num">Solar</th><th class="num">Battery</th><th class="num">Diesel</th><th class="num">CO<sub>2</sub></th><th class="num">CO<sub>2</sub> cut</th><th class="num">Farmer&rsquo;s bill</th></tr></thead>
+      <caption>Cost-optimal system as carbon is priced into the objective
+        <span class="cond">time-varying grid intensity &middot; the carbon price is a modelling parameter, not a bill anyone pays</span></caption>
+      <thead><tr><th class="num">Carbon value</th><th class="num">Solar</th><th class="num">Battery</th><th class="num">Diesel</th><th class="num">CO<sub>2</sub></th><th class="num">CO<sub>2</sub> cut</th><th class="num">Farmer&rsquo;s bill</th><th class="num">Abatement</th></tr></thead>
       <tbody>
-        <tr class="highlight"><td class="num mono">&#8377;0/kg</td><td class="num mono">3 kWp</td><td class="num mono">5 kWh</td><td class="num mono">182 L</td><td class="num mono">7,795 kg</td><td class="num mono">35.2%</td><td class="num mono">&#8377;84,565</td></tr>
-        <tr><td class="num mono">&#8377;2/kg</td><td class="num mono">3 kWp</td><td class="num mono">5 kWh</td><td class="num mono">182 L</td><td class="num mono">7,793 kg</td><td class="num mono">35.2%</td><td class="num mono">&#8377;84,565</td></tr>
-        <tr><td class="num mono">&#8377;5/kg</td><td class="num mono">5 kWp</td><td class="num mono">10 kWh</td><td class="num mono">62 L</td><td class="num mono">6,120 kg</td><td class="num mono">49.1%</td><td class="num mono">&#8377;89,762</td></tr>
-        <tr><td class="num mono">&#8377;15/kg</td><td class="num mono">8 kWp</td><td class="num mono">20 kWh</td><td class="num mono">15 L</td><td class="num mono">3,743 kg</td><td class="num mono">68.9%</td><td class="num mono">&#8377;117,880</td></tr>
+        <tr class="highlight"><td class="num mono">&#8377;0/kg</td><td class="num mono">3 kWp</td><td class="num mono">5 kWh</td><td class="num mono">184 L</td><td class="num mono">8,290 kg</td><td class="num mono">31.9%</td><td class="num mono">&#8377;84,709</td><td class="num src">&mdash;</td></tr>
+        <tr><td class="num mono">&#8377;2/kg</td><td class="num mono">3 kWp</td><td class="num mono">5 kWh</td><td class="num mono">197 L</td><td class="num mono">8,110 kg</td><td class="num mono">33.3%</td><td class="num mono">&#8377;86,077</td><td class="num mono">&#8377;7.60/kg</td></tr>
+        <tr><td class="num mono">&#8377;5/kg</td><td class="num mono">5 kWp</td><td class="num mono">10 kWh</td><td class="num mono">94 L</td><td class="num mono">6,349 kg</td><td class="num mono">47.8%</td><td class="num mono">&#8377;92,701</td><td class="num mono">&#8377;4.12/kg</td></tr>
+        <tr><td class="num mono">&#8377;15/kg</td><td class="num mono">8 kWp</td><td class="num mono">20 kWh</td><td class="num mono">34 L</td><td class="num mono">3,858 kg</td><td class="num mono">68.3%</td><td class="num mono">&#8377;119,738</td><td class="num mono">&#8377;7.90/kg</td></tr>
       </tbody>
     </table>
   </div>
-  <p>Expressed as marginal abatement cost, moving from a 35% to a 49% emissions cut costs <b>&#8377;3.10 per kg CO<sub>2</sub></b> avoided &mdash; below most estimates of the social cost of carbon. Pushing on to 69% costs &#8377;8.22/kg.</p>
+  <p>Two distinct mechanisms operate, and separating them is the finding:</p>
+  <ul class="plain">
+    <li><b>At &#8377;2/kg the hardware does not change at all</b> &mdash; still 3 kWp and 5 kWh. The entire 180 kg gain comes from the optimiser <b>re-timing the battery</b> against the daily carbon curve: charging through the clean midday trough, discharging into the dirty evening peak. No capital, pure dispatch.</li>
+    <li><b>From &#8377;5/kg upward it buys capacity instead</b>, and capacity is the cheaper lever &mdash; &#8377;4.12/kg against &#8377;7.60/kg for re-timing, because it removes far more carbon per rupee.</li>
+  </ul>
+  <p>So: <b>installed renewable capacity is the dominant driver of emissions, but dispatch is not irrelevant</b> once carbon intensity varies through the day. Under a flat intensity assumption it contributes essentially nothing. Which assumption you make determines whether carbon-aware control is worth building at all.</p>
+  <div class="note caution">
+    <strong>A correction we are making in public.</strong> An earlier version of this report concluded that pricing carbon does nothing to dispatch, and that emissions are set by what is installed rather than how it is run. That held only because the model then used a single flat emission factor. With a time-varying factor the conclusion is the more nuanced one above. The flat-factor assumption was the error, not the arithmetic.
+  </div>
   <div class="note">
-    <strong>A split incentive, and a use for this tool.</strong> The farmer pays the extra &#8377;5,200/yr while the carbon benefit accrues to everyone else, so a rational farmer buys the smaller system. An incentive of &#8377;3&ndash;5/kg closes the gap and buys 14 further points of emissions reduction at below social cost. India&rsquo;s own carbon market trades near &#8377;2/kg &mdash; which this model shows is too weak to shift a single sizing decision. That calculation is exactly the decision the electrification agencies and NGOs named in the problem statement exist to make.
+    <strong>A split incentive, and a use for this tool.</strong> The farmer pays the extra &#8377;7,992/yr to reach a 47.8% cut while the carbon benefit accrues to everyone else, so a rational farmer buys the smaller system. An incentive near &#8377;4/kg closes that gap. India&rsquo;s own carbon market trades near &#8377;2/kg &mdash; which this model shows is enough to re-time a battery but not enough to shift a single sizing decision. That calculation is exactly what the electrification agencies and NGOs named in the problem statement exist to make.
   </div>
 </section>
 
 <section>
   <div class="section-head"><h2>How the numbers are grounded</h2><span class="label">data and assumptions</span></div>
-  <p>Weather is measured, not modelled. Forecast error is taken from the provider&rsquo;s own archived model runs rather than invented as noise. Costs remain planning assumptions and are the main thing a field pilot would replace.</p>
+  <p>Being precise here is the difference between a defensible project and an embarrassing one. Two tables: what rests on observation, and what is a planning assumption. Nothing in the second table is data.</p>
   <div class="table-wrap">
     <table>
-      <caption>Parameter provenance</caption>
+      <caption>Grounded in observation</caption>
       <thead><tr><th>Parameter</th><th class="num">Value</th><th>Source</th></tr></thead>
       <tbody>
-        <tr><td class="name">Solar yield</td><td class="num mono">1,490 kWh/kWp</td><td class="src">Measured &mdash; Open-Meteo archive, Palanpur 2025</td></tr>
-        <tr><td class="name">Day-ahead forecast error</td><td class="num mono">17.5% MAE</td><td class="src">Measured &mdash; Open-Meteo archived model runs, 92 days</td></tr>
-        <tr><td class="name">Mean wind speed</td><td class="num mono">2.5 m/s</td><td class="src">Measured &mdash; Open-Meteo archive</td></tr>
+        <tr><td class="name">Solar and wind resource</td><td class="num mono">1,490 kWh/kWp</td><td class="src">Open-Meteo <b>ERA5 reanalysis</b>, Palanpur 2025 &mdash; an observation-assimilated model on a ~9&ndash;30 km grid, <b>not</b> a weather station</td></tr>
+        <tr><td class="name">Day-ahead forecast error</td><td class="num mono">17.5% MAE</td><td class="src">Open-Meteo&rsquo;s <b>archived past model runs</b>, 92 days &mdash; genuinely measured, not invented as noise</td></tr>
         <tr><td class="name">Diesel price</td><td class="num mono">&#8377;98.39/L</td><td class="src">Field research</td></tr>
-        <tr><td class="name">Pumpset fuel rate</td><td class="num mono">0.75 L/kWh</td><td class="src">Derived &mdash; 2.8 L/h over a 3.73 kW pump</td></tr>
-        <tr><td class="name">Backup genset fuel rate</td><td class="num mono">0.30 L/kWh</td><td class="src">Engineering assumption</td></tr>
-        <tr><td class="name">Feeder tariffs</td><td class="num mono">&#8377;1.50 / &#8377;5.00</td><td class="src">Assumption &mdash; subsidised agricultural vs. domestic</td></tr>
+        <tr><td class="name">Pumpset fuel rate</td><td class="num mono">0.75 L/kWh</td><td class="src">Derived from field figures &mdash; 2.8 L/h over a 3.73 kW pump</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note caution">
+    <strong>The forecast, precisely, because it is easy to overstate.</strong> Annual runs use a <b>synthesised</b> forecast &mdash; reanalysis irradiance perturbed with day-correlated noise scaled to the measured 17.5% error. It is <b>not</b> downloaded forecast data, because the forecast archive reaches back only about 92 days. Genuine archived forecasts are used in exactly one place: a 93-day validation run, which found the synthesised forecast reproduces <b>93% of the cost penalty</b> a real forecast imposes (&#8377;517 against &#8377;557) &mdash; making our synthetic forecast very slightly optimistic, and we would rather say so than have it found.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <caption>Modelled assumptions &mdash; not data</caption>
+      <thead><tr><th>Parameter</th><th class="num">Value</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Farm demand profile</td><td class="num mono">15,175 kWh/yr</td><td class="src"><b>Constructed.</b> Cold storage alone is ~40% of it</td></tr>
+        <tr><td class="name">Village demand profile</td><td class="num mono">157,273 kWh/yr</td><td class="src"><b>Constructed.</b> 2.5 kWh/day per household, 5 kW milk cooler, 4 h water pumping</td></tr>
+        <tr><td class="name">Feeder roster</td><td class="num mono">8 h, 3 start times</td><td class="src">Modelled example of Jyotigram structure</td></tr>
+        <tr><td class="name">Feeder outage rates</td><td class="num mono">5% / 7%</td><td class="src">Assumed &mdash; agricultural / village</td></tr>
+        <tr><td class="name">Feeder tariffs</td><td class="num mono">&#8377;1.50 / &#8377;5.00</td><td class="src">Assumed &mdash; subsidised agricultural vs. domestic</td></tr>
         <tr><td class="name">Solar capital</td><td class="num mono">&#8377;50,000/kWp</td><td class="src">Planning assumption &mdash; verify against quotes</td></tr>
-        <tr><td class="name">Battery capital</td><td class="num mono">&#8377;18,000/kWh</td><td class="src">Planning assumption &mdash; result is sensitive to this</td></tr>
-        <tr><td class="name">Discount rate</td><td class="num mono">9% </td><td class="src">Capital recovered over 25/20/10-year asset lives</td></tr>
+        <tr><td class="name">Battery capital</td><td class="num mono">&#8377;18,000/kWh</td><td class="src">Planning assumption &mdash; <b>results are sensitive to this</b></td></tr>
+        <tr><td class="name">Grid emission factor</td><td class="num mono">0.710 kg/kWh mean</td><td class="src">Assumed shape and level, varying 0.515&ndash;0.890 &mdash; and result 7 turns on this</td></tr>
+        <tr><td class="name">Asset lives / discount rate</td><td class="num mono">25/20/10 yr at 9%</td><td class="src">Assumed</td></tr>
       </tbody>
     </table>
   </div>
@@ -455,7 +571,7 @@
   <ol class="findings">
     <li>
       <h3>Optimisation has capital consequences, not just operating ones</h3>
-      <p>The same search says &ldquo;no battery&rdquo; under rule-based control and &ldquo;5 kWh&rdquo; under optimisation. A controller that changes the bill of materials is doing something a dashboard cannot.</p>
+      <p>The same search says &ldquo;no battery&rdquo; under rule-based control and &ldquo;5 kWh&rdquo; under optimisation, and at village scale &ldquo;0 kWh&rdquo; against &ldquo;100 kWh&rdquo;. A controller that changes the bill of materials is doing something a dashboard cannot. Size first and dispatch second, and you buy the wrong hardware.</p>
     </li>
     <li>
       <h3>The advantage survives imperfect forecasts</h3>
@@ -463,19 +579,27 @@
     </li>
     <li>
       <h3>The value is tariff arbitrage, not weather prediction</h3>
-      <p>At the optimal sizing the battery is charged from the subsidised feeder and discharged against diesel. Knowing the feeder roster matters more than knowing the cloud cover &mdash; the opposite of what we assumed at the outset.</p>
+      <p>At the optimal sizing the battery is charged from the subsidised feeder and discharged against diesel, and 94% of charging happens while that feeder is on. Knowing the feeder roster matters more than knowing the cloud cover &mdash; the opposite of what we assumed at the outset.</p>
     </li>
     <li>
-      <h3>Emissions are decided at purchase, not at runtime</h3>
-      <p>No dispatch policy meaningfully changes CO<sub>2</sub>, because the alternatives are within a few percent of each other. Only installed renewable capacity moves it.</p>
+      <h3>Whether carbon-aware control is worth building depends on one assumption</h3>
+      <p>Under a flat grid emission factor, dispatch moves emissions by 4 kg a year and carbon pricing changes nothing. Under a time-varying factor, re-timing the battery alone buys 180 kg at zero capital. We reached the first conclusion before the second, and the flat factor was the error.</p>
+    </li>
+    <li>
+      <h3>Constraints that look like detail decide the outcome</h3>
+      <p>The feeder-routing rule is one line of policy. Enforcing it moved village storage from 0 to 100 kWh and halved diesel. A model that abstracts it away gets a different, wrong answer &mdash; and a more flattering one.</p>
+    </li>
+    <li>
+      <h3>Sharing helps the people who own nothing</h3>
+      <p>The unserved energy without sharing was households, the dairy and the water supply. The farms &mdash; who own every panel and battery &mdash; were never in the dark. One kilowatt of line ends all curtailment and cuts diesel 87% with no new generation.</p>
     </li>
     <li>
       <h3>Half the benefit is not artificial intelligence</h3>
       <p>Replacing the 0.75 L/kWh pumpset with an efficient genset delivers roughly half the diesel reduction at zero capital. We report this because an evaluator will find it, and because it sharpens what the optimiser is actually for.</p>
     </li>
     <li>
-      <h3>Assumptions were repeatedly wrong in measurable ways</h3>
-      <p>Our synthetic weather overstated solar by 31% and wind by an order of magnitude; our first baseline overstated the farmer&rsquo;s bill fourfold by letting a pumpset power a milking machine. Each was caught by checking the model against physical reality rather than against expectation.</p>
+      <h3>Our assumptions were repeatedly wrong in measurable ways</h3>
+      <p>Synthetic weather overstated solar by 31% and wind by an order of magnitude. The first baseline overstated the farmer&rsquo;s bill fourfold by letting a pumpset power a milking machine. A reliability metric read requested rather than delivered load and reported 100% when load was being shed. Each was caught by checking the model against physical reality rather than against expectation, and each correction reduced our headline figure.</p>
     </li>
   </ol>
 </section>
@@ -483,26 +607,28 @@
 <section>
   <div class="section-head"><h2>Limitations</h2><span class="label">what this does not yet show</span></div>
   <ul class="plain">
-    <li><b>Demand is synthetic.</b> Household, dairy and cold-storage profiles are constructed, not metered, and cold storage alone drives roughly 40% of demand. Irrigation is grounded in surveyed pump hours.</li>
+    <li><b>Demand is constructed, not metered.</b> Household, dairy and cold-storage profiles are modelled. They are structurally realistic for Banaskantha; none of them is measured. This is the single largest caveat on every rupee figure here.</li>
     <li><b>Costs are planning figures.</b> Capital costs and tariffs are assumptions; battery capital in particular changes the recommendation.</li>
-    <li><b>One farm, one year.</b> Results are for a single representative site over calendar 2025, with no multi-year weather variability.</li>
-    <li><b>No field validation.</b> Nothing here has been measured against an installed system.</li>
-    <li><b>The agent layer is not built.</b> Phases 5&ndash;7 remain ahead; all present results come from the deterministic core.</li>
+    <li><b>No trained ML model exists.</b> Forecasting is statistical and calibrated to measured error. The language model only phrases results; it never computes, and its output is rejected if a number cannot be traced to the solver.</li>
+    <li><b>Sharing runs 60 days, not a year.</b> The cluster program solves a balance per participant and is far heavier. Read those ratios, not their rupees.</li>
+    <li><b>One site, one year.</b> No multi-year weather variability, and no field validation against an installed system.</li>
+    <li><b>No automated test suite.</b> Two of the arithmetic bugs listed in finding 8 were caught by inspection rather than by a test. This is the thinnest part of the work and the next thing we would fix.</li>
+    <li><b>Autonomous agent orchestration is not built.</b> Farmer-facing explanation and community sharing are built; what is missing is the layer that decides <em>when</em> to re-plan without being asked. Every run today is triggered by a person or a script.</li>
   </ul>
 </section>
 
 <section>
   <div class="section-head"><h2>Next</h2><span class="label">remaining work</span></div>
   <ul class="plain">
-    <li>Agent layer over the optimiser for monitoring, replanning and plain-language explanation to the farmer.</li>
-    <li>Operator dashboard and farmer-facing recommendations, driven by the existing engine.</li>
-    <li>Community extension &mdash; several farms sharing generation and storage, which the sizing engine already supports in principle.</li>
-    <li>Replace assumed capital costs with vendor quotes, and synthetic demand with metered data from a pilot site.</li>
+    <li>A test suite over the KPI arithmetic, which is where every bug we have found actually lived.</li>
+    <li>Agent orchestration above the optimiser &mdash; monitoring, deciding when to re-plan, and escalating unprompted.</li>
+    <li>Replace assumed capital costs with vendor quotes, and constructed demand with metered data from a pilot site.</li>
+    <li>Multi-year weather to test whether the sizing recommendation is stable across good and bad monsoons.</li>
   </ul>
 </section>
 
 <footer>
-  GramUrja AI &middot; mid-evaluation &middot; all figures reproducible from the repository over 8,760 simulated hours
+  GramUrja AI &middot; mid-evaluation &middot; every figure reproducible from the repository &middot; farm and village runs over 8,760 simulated hours, sharing runs over 60 days
 </footer>
 
 </div>

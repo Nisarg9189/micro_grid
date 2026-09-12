@@ -733,17 +733,38 @@ mix is village feeder 39.2%, agricultural feeder 31.4%, own solar 28.6%, **diese
 | Water pumping | 17 kWh | 306 kWh | +289 kWh |
 
 The farms are the only net exporters -- they own every panel. But the households own *no
-generation* and still push out 470 kWh, so that number needed a mechanism rather than an
-assumption. Checking the hours: **all 165 of them have the agricultural feeder off and the
-village feeder on**, accounting for 100% of the 470 kWh. What crosses is village-feeder
-power relayed to the farms during the Jyotigram ration.
+generation* and still push out 471 kWh, which needed a cause rather than a story.
 
-So this is not charity from the farms to the village. It is a two-way trade -- **farm solar
-by day, household grid access during the ration** -- and the farms get something back. That
-is the difference between a scheme people join and one they have to be talked into. It also
-falls out of the feeder rules in section 4 rather than being designed in: households hold a
-domestic connection the farms cannot use for irrigation, and that entitlement turns out to
-be a tradable asset.
+The cause is **the farms' own domestic connection cap**. Each farm holds 2 kW on the
+village feeder; each household block holds 12 kW and does not use all of it. When a farm's
+domestic draw hits its own ceiling, a block imports on the farm's behalf and relays it
+across the line. The test is decisive: **raise the farm cap from 2 kW to 6 kW and household
+export falls to exactly zero**, with no other change.
+
+So it is genuinely a two-way trade -- **farm solar by day, spare household connection
+capacity when a farm is capped** -- and the farms do get something back, which is the
+difference between a scheme people join and one they have to be talked into. But the
+honest reading is that the relay is a *symptom*: it is a workaround for an undersized farm
+connection, and over the same 20-day window, raising the cap costs ₹52,747 against ₹53,345
+with the relay. **Upgrading the connection beats wheeling power around it.** That is a more
+useful finding for an electrification agency than the trade itself.
+
+> **How this was corrected.** An earlier version of this section claimed the mechanism was
+> "household grid access during the Jyotigram ration", on the evidence that all 165 export
+> hours had the agricultural feeder off. That correlation is real but incidental — during
+> those hours a farm's draw shifts onto its domestic side and hits the 2 kW cap. The test
+> suite flagged the per-participant attribution as under-determined, and checking it
+> properly produced the cap explanation above. The numbers never moved; the explanation was
+> wrong.
+
+**Attribution caveat.** Nothing in the objective originally priced use of the line, so when
+a surplus would otherwise be curtailed the optimiser was exactly indifferent about *who*
+routed it — different solvers returned different per-participant splits at identical cost.
+A small wheeling charge (₹0.01/kWh) now breaks that tie in the physically sensible
+direction. With it, CLARABEL and ECOS agree on the per-kind flows to within 0.3%, and the
+aggregates (transferred, unserved, cost, reliability) match to six significant figures
+under every solver tried. **Which individual block relays is still not determined**, so
+this table should be read by kind and never by participant.
 
 The combined day, averaged over 60 days (kW):
 

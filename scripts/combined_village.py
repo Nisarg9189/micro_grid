@@ -104,10 +104,21 @@ def main() -> None:
         into = r.imported_by_kind.get(kind, 0.0)
         print(f"  {LABEL[kind]:<14}{out:>12,.0f}{into:>12,.0f}{into - out:>+12,.0f}")
     print("  The farms are the only net exporters -- they own every panel. But the line runs")
-    print("  both ways: the households own no generation, yet still push energy out. Every")
-    print("  hour they do so is an hour the agricultural feeder is off and the village feeder")
-    print("  is on, so what crosses is village-feeder power relayed to the farms. Sharing is")
-    print("  a two-way trade -- farm solar by day, household grid access during the ration.")
+    print("  both ways: the households own no generation and still push energy out, which")
+    print("  needed a cause rather than a story. It is the farms' OWN domestic connection")
+    print(f"  cap of {cluster.farmhouse_kw:g} kW. A household block holds "
+          f"{cluster.village_kw_per_block:g} kW it does not fully use, so when a farm's")
+    print("  domestic draw hits its own ceiling the block imports on the farm's behalf and")
+    print("  relays it. Raise the farm cap to 6 kW and this export falls to exactly zero.")
+    print()
+    print("  So it is a two-way trade -- farm solar by day, spare household connection")
+    print("  capacity when a farm is capped -- but read it as a symptom: the relay is a")
+    print("  workaround for an undersized farm connection, and simply upgrading that")
+    print("  connection is cheaper than wheeling power around it.")
+    print()
+    print("  Attribution caveat: these per-kind flows are stable (CLARABEL and ECOS agree")
+    print("  within 0.3%), but WHICH individual block relays is not determined -- several")
+    print("  assignments cost the same. Read the table by kind, never by participant.")
 
     # Collapse the run into an average day, so the interaction is visible as a shape.
     hourly = {name: np.asarray(v).reshape(-1, 24).mean(axis=0) for name, v in r.hourly.items()}

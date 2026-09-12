@@ -453,12 +453,23 @@ Demand and shortfall by participant:
 | Water pumping | 895 kWh | 1.8% | 0.0 | 0 |
 
 The interesting output is the export/import table, which shows the line running **both
-ways**. The farms are the only net exporters (11,602 out, 4,121 in) because they own every
-panel. But the households own no generation and still export 470 kWh -- and all 165 hours
-in which they do so are hours when the agricultural feeder is off and the village feeder is
-on. What crosses is village-feeder power relayed to the farms during the ration. Sharing is
-a two-way trade: farm solar by day, household grid access during the ration, so the farms
-get something back rather than simply donating.
+ways**. The farms are the only net exporters (11,601 out, 4,121 in) because they own every
+panel. But the households own no generation and still export 471 kWh, and the cause is the
+farms' own domestic connection cap: each farm holds 2 kW on the village feeder while a
+household block holds 12 kW it does not fully use, so when a farm is capped a block imports
+on its behalf and relays it. Raise the farm cap to 6 kW and that export falls to exactly
+zero.
+
+So it is a real two-way trade -- farm solar by day, spare household connection capacity
+when a farm is capped -- but read it as a symptom: the relay works around an undersized
+farm connection, and raising the cap is cheaper than wheeling power around it.
+
+Two caveats on that table. A small wheeling charge (Rs 0.01/kWh) is applied to energy
+pushed onto the line, because without it the optimiser was exactly indifferent about who
+routed a surplus that would otherwise be curtailed, and different solvers returned
+different splits at identical cost. With it, CLARABEL and ECOS agree on the per-kind flows
+within 0.3%. Which *individual* block relays is still not determined, so read the table by
+kind and never by participant.
 
 The script also prints the combined day hour by hour. The battery fleet charges 01--05,
 10--17 and 23--24 and discharges 05--10, 17--21 and 22--23 -- two charge windows for two
