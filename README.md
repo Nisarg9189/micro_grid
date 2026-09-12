@@ -1,6 +1,6 @@
 # GramUrja AI — Complete Project Explanation
 
-[PROJECT_STARTUP.md](PROJECT_STARTUP.md)
+[PROJECT_STARTUP.md](PROJECT_STARTUP.md) · [CONSOLE.md](CONSOLE.md)
 
 A guide to what this project is, how it works, what the numbers mean, and what it does not
 yet do. Written for teammates, judges and evaluators.
@@ -17,10 +17,10 @@ feeders and diesel so the bill is as low as possible while the power stays on.
 
 | | Today | With GramUrja AI |
 |---|---|---|
-| Diesel | 1,080 L/year | **182 L/year** (−83%) |
-| Total energy cost | ₹167,737/year | **₹84,565/year** (₹83,172 saved) |
+| Diesel | 1,080 L/year | **184 L/year** (−83%) |
+| Total energy cost | ₹167,737/year | **₹84,709/year** (₹83,027 saved) |
 | Reliability | 94.1% | **100%** |
-| CO₂ | 12,166 kg/year | **8,302 kg/year** (−31.8%) |
+| CO₂ | 12,166 kg/year | **8,290 kg/year** (−31.9%) |
 
 Recommended system: **3 kWp solar, 5 kWh battery, no wind** — derived from the load profile,
 not assumed.
@@ -506,20 +506,20 @@ which controller runs** — see Section 12.
 
 | Metric | Value |
 |---|---|
-| Diesel | 182 L/year (83.1% below status quo) |
+| Diesel | 184 L/year (83.0% below status quo) |
 | Reliability | 100% |
 | Annualised capital | ₹31,695 |
-| Energy cost | ₹52,870 |
-| **Total** | **₹84,565/year** |
+| Energy cost | ₹53,014 |
+| **Total** | **₹84,709/year** |
 | Curtailed energy | 19 kWh/year |
 
 Nearby options, showing how flat the cost surface is:
 
 | Solar | Battery | Diesel | Diesel cut | Total/year |
 |---|---|---|---|---|
-| **3 kWp** | **5 kWh** | 182 L | 83.1% | **₹84,565** |
-| 2 kWp | 5 kWh | 197 L | 81.8% | ₹84,933 |
-| 3 kWp | 10 kWh | 72 L | 93.3% | ₹86,025 |
+| **3 kWp** | **5 kWh** | 184 L | 83.0% | **₹84,709** |
+| 2 kWp | 5 kWh | 198 L | 81.6% | ₹85,055 |
+| 3 kWp | 10 kWh | 75 L | 93.1% | ₹86,218 |
 | 0 | 10 kWh | 107 L | 90.1% | ₹88,353 |
 | 2 kWp | 0 | 396 L | 63.4% | ₹90,827 |
 
@@ -705,10 +705,10 @@ actual bill.
 
 | Carbon value | Solar | Battery | Diesel | CO₂ | CO₂ cut | Optimisation total | Farmer's bill | Abatement |
 |---|---|---|---|---|---|---|---|---|
-| ₹0/kg | 3 kWp | 5 kWh | 182 L | 8,302 kg | 31.8% | ₹84,565 | ₹84,565 | — |
-| ₹2/kg | 3 kWp | 5 kWh | 197 L | 8,110 kg | 33.3% | ₹102,299 | ₹86,079 | ₹7.89/kg |
-| ₹5/kg | 5 kWp | 10 kWh | 94 L | 6,350 kg | 47.8% | ₹124,459 | ₹92,709 | ₹4.17/kg |
-| ₹15/kg | 8 kWp | 20 kWh | 34 L | 3,855 kg | 68.3% | ₹177,543 | ₹119,718 | ₹7.90/kg |
+| ₹0/kg | 3 kWp | 5 kWh | 184 L | 8,290 kg | 31.9% | ₹84,709 | ₹84,709 | — |
+| ₹2/kg | 3 kWp | 5 kWh | 197 L | 8,110 kg | 33.3% | ₹102,297 | ₹86,077 | ₹7.60/kg |
+| ₹5/kg | 5 kWp | 10 kWh | 94 L | 6,349 kg | 47.8% | ₹124,446 | ₹92,701 | ₹4.12/kg |
+| ₹15/kg | 8 kWp | 20 kWh | 34 L | 3,858 kg | 68.3% | ₹177,608 | ₹119,738 | ₹7.90/kg |
 
 **Reading this table correctly:**
 
@@ -722,13 +722,13 @@ actual bill.
 
 Two distinct mechanisms operate, and they are worth separating:
 
-**At ₹2/kg the hardware does not change at all.** Still 3 kWp and 5 kWh. The entire 192 kg
+**At ₹2/kg the hardware does not change at all.** Still 3 kWp and 5 kWh. The entire 180 kg
 gain comes from the optimiser **re-timing the battery** against the daily carbon curve —
 charging through the clean midday trough, discharging into the dirty evening peak. No
 capital, pure dispatch.
 
-**From ₹5/kg upward it buys capacity instead**, and capacity is the cheaper lever — ₹4.17/kg
-against ₹7.89/kg for re-timing, because it removes far more carbon per rupee.
+**From ₹5/kg upward it buys capacity instead**, and capacity is the cheaper lever — ₹4.12/kg
+against ₹7.60/kg for re-timing, because it removes far more carbon per rupee.
 
 So: **installed renewable capacity is the dominant driver of emissions, but dispatch is not
 irrelevant** — it contributes a real, if smaller, reduction once carbon intensity varies
@@ -794,7 +794,7 @@ would replace.
 
 Same hardware (3 kWp solar, 5 kWh battery), same year, same weather. **These are energy costs
 only — they exclude the ₹31,695/year of annualised capital**, so they are not comparable to
-the ₹84,565 total in the next table.
+the ₹84,709 total in the next table.
 
 | Metric | Status quo | Rule-based | Optimiser (realistic forecast) |
 |---|---|---|---|
@@ -821,13 +821,13 @@ Comparing like with like — the status quo has no capital because there is no h
 |---|---|---|
 | Hardware | None | 3 kWp solar, 5 kWh battery |
 | Annualised capital | ₹0 | ₹31,695 |
-| Energy cost | ₹167,737 | ₹52,870 |
-| **Total per year** | **₹167,737** | **₹84,565** |
-| Diesel | 1,080 L | 182 L (**−83.1%**) |
+| Energy cost | ₹167,737 | ₹53,014 |
+| **Total per year** | **₹167,737** | **₹84,709** |
+| Diesel | 1,080 L | 184 L (**−83.0%**) |
 | Reliability | 94.1% | **100%** |
-| CO₂ | 12,166 kg | 8,302 kg (**−31.8%**) |
+| CO₂ | 12,166 kg | 8,290 kg (**−31.9%**) |
 
-**Saving: ₹83,172 per year**, about half the farm's total energy bill.
+**Saving: ₹83,027 per year**, about half the farm's total energy bill.
 
 ### Sizing depends on the controller
 

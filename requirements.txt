@@ -7,3 +7,7 @@ pandas==2.1.4
 scipy==1.11.4
 matplotlib==3.8.4
 cvxpy==1.4.3
+
+# The interactive console (scripts/serve.py). Not needed for the CLI scripts.
+fastapi==0.115.6
+uvicorn==0.34.0

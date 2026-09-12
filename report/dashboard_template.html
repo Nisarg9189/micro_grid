@@ -1,0 +1,542 @@
+<title>GramUrja Operations Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #F2F6F8;
+    --surface: #FCFCFB;
+    --surface-2: #FFFFFF;
+    --sunk: #E9EFF3;
+    --ink: #101820;
+    --ink-2: #4B5B65;
+    --ink-3: #6F808B;
+    --rule: #D6E0E7;
+    --rule-2: #B4C4CF;
+    --accent: #0E6470;
+    --accent-soft: #DEEEF0;
+    --good: #1B7F4E;
+    --warn: #A2452C;
+    /* Series slots, validated against #fcfcfb (light) via validate_palette.js */
+    --s-ag: #2a78d6;
+    --s-diesel: #eb6834;
+    --s-batt: #1baf7a;
+    --s-solar: #eda100;
+    --s-village: #e87ba4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0B1016;
+      --surface: #1A1A19;
+      --surface-2: #141C24;
+      --sunk: #202A33;
+      --ink: #EAF1F6;
+      --ink-2: #A9BAC6;
+      --ink-3: #7C8D99;
+      --rule: #26323C;
+      --rule-2: #384856;
+      --accent: #49B3C0;
+      --accent-soft: #143034;
+      --good: #5CB98C;
+      --warn: #D97B5C;
+      --s-ag: #3987e5;
+      --s-diesel: #d95926;
+      --s-batt: #199e70;
+      --s-solar: #c98500;
+      --s-village: #d55181;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0B1016;
+    --surface: #1A1A19;
+    --surface-2: #141C24;
+    --sunk: #202A33;
+    --ink: #EAF1F6;
+    --ink-2: #A9BAC6;
+    --ink-3: #7C8D99;
+    --rule: #26323C;
+    --rule-2: #384856;
+    --accent: #49B3C0;
+    --accent-soft: #143034;
+    --good: #5CB98C;
+    --warn: #D97B5C;
+    --s-ag: #3987e5;
+    --s-diesel: #d95926;
+    --s-batt: #199e70;
+    --s-solar: #c98500;
+    --s-village: #d55181;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px 72px; }
+  .mono, .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px; padding: 28px 0 16px; border-bottom: 2px solid var(--ink); margin-bottom: 20px;
+  }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .sub { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+  .spec { display: flex; gap: 18px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-2); }
+  .spec b { color: var(--ink); font-weight: 600; }
+
+  .tiles { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 26px; }
+  .tile { background: var(--surface-2); padding: 16px 16px 14px; }
+  .tile .lab { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+  .tile .big { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
+               font-size: 27px; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+  .tile .big span { font-size: 14px; font-weight: 400; color: var(--ink-2); }
+  .tile .sub2 { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2); margin-top: 7px; }
+  .tile .sub2 .d { color: var(--good); font-weight: 500; }
+
+  section.panel { background: var(--surface-2); border: 1px solid var(--rule); padding: 18px 18px 14px; margin-bottom: 22px; }
+  .ptitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .ptitle h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .ptitle .note { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); }
+  .pdesc { font-size: 12.5px; color: var(--ink-2); margin: 0 0 14px; max-width: 78ch; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 10px; }
+  .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+  .sw { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+  .chartbox { position: relative; overflow-x: auto; }
+  svg.chart { display: block; width: 100%; height: auto; }
+  .gridline { stroke: var(--rule); stroke-width: 1; }
+  .axis { stroke: var(--rule-2); stroke-width: 1; }
+  .tick { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--ink-3); }
+  .alab { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--ink-3); letter-spacing: 0.06em; }
+  .dlab { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500; }
+
+  .tip { position: absolute; pointer-events: none; opacity: 0; transition: opacity .09s;
+         background: var(--surface); border: 1px solid var(--rule-2); padding: 8px 10px;
+         font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink);
+         box-shadow: 0 4px 14px rgba(0,0,0,.14); min-width: 150px; z-index: 5; }
+  .tip.on { opacity: 1; }
+  .tip .th { font-weight: 600; margin-bottom: 5px; color: var(--ink); }
+  .tip .r { display: flex; justify-content: space-between; gap: 12px; }
+  .tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+  .tip .r span:last-child { font-variant-numeric: tabular-nums; }
+
+  .two { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th { text-align: left; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+       color: var(--ink-3); padding: 7px 10px; border-bottom: 1px solid var(--rule-2); white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--rule); }
+  th.n, td.n { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.hi td { background: var(--accent-soft); font-weight: 600; }
+
+  details { margin-top: 12px; }
+  summary { cursor: pointer; font-size: 12px; color: var(--accent); padding: 5px 0; }
+  summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tabscroll { overflow-x: auto; max-height: 340px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--rule); }
+
+  .brief { background: var(--sunk); border-left: 3px solid var(--accent); padding: 13px 15px; }
+  .brief ul { margin: 0; padding-left: 18px; }
+  .brief li { margin-bottom: 5px; font-size: 13px; }
+  .brief li:last-child { margin-bottom: 0; }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 14px; margin-top: 6px;
+           font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>GramUrja Operations Board</h1>
+      <div class="sub" id="site-line"></div>
+    </div>
+    <div class="spec" id="spec"></div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="panel">
+    <div class="ptitle">
+      <h2>Where every hour's energy came from</h2>
+      <span class="note" id="week-note"></span>
+    </div>
+    <p class="pdesc">One week of dispatch decided by the optimiser. The strips above the plot show
+      when each grid connection was actually available (AG = agricultural feeder, VILLAGE = domestic feeder) &mdash; note how the battery carries the load
+      through the gaps in the agricultural feeder, and how little diesel is left.</p>
+    <div class="legend" id="legend"></div>
+    <div class="chartbox">
+      <svg class="chart" id="dispatch" viewBox="0 0 980 360" role="img"
+           aria-label="Stacked hourly dispatch by source over one week, with feeder availability strips"></svg>
+      <div class="tip" id="tip-d"></div>
+    </div>
+    <details>
+      <summary>Show the hourly numbers as a table</summary>
+      <div class="tabscroll"><table id="week-table"></table></div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="ptitle"><h2>Battery state of charge</h2><span class="note">same week &middot; 20% reserve floor held</span></div>
+    <p class="pdesc">The reserve floor is a hard constraint, not a guideline: the optimiser may plan
+      down to it but never through it.</p>
+    <div class="chartbox">
+      <svg class="chart" id="soc" viewBox="0 0 980 200" role="img"
+           aria-label="Battery state of charge across the week against the 20 percent reserve floor"></svg>
+      <div class="tip" id="tip-s"></div>
+    </div>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <div class="ptitle"><h2>When to run the pump</h2><span class="note">cost by start hour</span></div>
+      <p class="pdesc">Each bar is a full re-simulation with the pump moved to that hour, so the
+        recommendation is a measured result rather than a rule of thumb.</p>
+      <div class="chartbox">
+        <svg class="chart" id="windows" viewBox="0 0 480 300" role="img"
+             aria-label="Daily energy cost for each candidate irrigation start hour"></svg>
+        <div class="tip" id="tip-w"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ptitle"><h2>Grid carbon through the day</h2><span class="note">kg CO2 per kWh</span></div>
+      <p class="pdesc">Utility solar pushes the midday trough down; the post-sunset peak is met by the
+        dirtiest plant on the system. That spread is the only reason storage can cut emissions at all.</p>
+      <div class="chartbox">
+        <svg class="chart" id="carbon" viewBox="0 0 480 300" role="img"
+             aria-label="Grid carbon intensity by hour of day, from a midday trough to an evening peak"></svg>
+        <div class="tip" id="tip-c"></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="ptitle"><h2>Today's advice</h2><span class="note">assembled from the optimiser, no language model</span></div>
+    <div class="brief"><ul id="brief"></ul></div>
+  </section>
+
+  <section class="panel">
+    <div class="ptitle"><h2>Controller comparison</h2><span class="note">same hardware &middot; energy cost only, excludes annualised capital</span></div>
+    <table id="kpi-table"></table>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById("data").textContent);
+  const fmt = (v, d = 0) => v.toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const el = (n, a = {}) => { const e = document.createElementNS(SVGNS, n);
+    for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+  // Stack order is the validated adjacency order from validate_palette.js; each slot is
+  // also semantically apt, so identity never rests on colour alone (legend + table below).
+  const SERIES = [
+    { key: "ag_kw",        label: "Agricultural feeder",  css: "--s-ag" },
+    { key: "diesel_kw",    label: "Diesel",               css: "--s-diesel" },
+    { key: "discharge_kw", label: "Battery discharge",    css: "--s-batt" },
+    { key: "solar_kw",     label: "Solar",                css: "--s-solar" },
+    { key: "village_kw",   label: "Village feeder",       css: "--s-village" }
+  ];
+  const hue = (css) => getComputedStyle(document.documentElement).getPropertyValue(css).trim();
+
+  /* ---------- header ---------- */
+  const s = D.site;
+  document.getElementById("site-line").textContent =
+    `${s.name} · ${s.latitude}°N ${s.longitude}°E · calendar ${s.year} · 8,760 simulated hours`;
+  document.getElementById("spec").innerHTML =
+    `<span>Solar <b>${s.solar_kwp} kWp</b></span><span>Battery <b>${s.battery_kwh} kWh</b></span>` +
+    `<span>Wind <b>${s.wind_kw} kW</b></span>`;
+  document.getElementById("week-note").textContent = `days ${D.week.start_day}–${D.week.start_day + 6} · 168 hours`;
+  document.getElementById("foot").textContent =
+    "Every figure on this page is output from the model, not illustration. Demand profile, capital costs and tariffs are modelled assumptions.";
+
+  /* ---------- tiles ---------- */
+  const q = D.kpis.status_quo, o = D.kpis.optimiser;
+  const tiles = [
+    ["Diesel burned", fmt(o.diesel_litres, 0), "L/yr", `from ${fmt(q.diesel_litres, 0)} L`,
+     `${fmt(100 * (q.diesel_litres - o.diesel_litres) / q.diesel_litres, 0)}% less`],
+    ["Energy cost", "₹" + fmt(o.energy_cost_inr), "/yr", `from ₹${fmt(q.energy_cost_inr)}`,
+     `₹${fmt(q.energy_cost_inr - o.energy_cost_inr)} saved`],
+    ["Supply reliability", fmt(o.reliability_pct, 1), "%", `from ${fmt(q.reliability_pct, 1)}%`,
+     `${fmt(q.unmet_kwh, 0)} kWh shortfall removed`],
+    ["Emissions", fmt(o.co2_kg), "kg CO2", `from ${fmt(q.co2_kg)} kg`,
+     `${fmt(100 * (q.co2_kg - o.co2_kg) / q.co2_kg, 1)}% less`]
+  ];
+  document.getElementById("tiles").innerHTML = tiles.map(t =>
+    `<div class="tile"><div class="lab">${t[0]}</div>
+     <div class="big">${t[1]} <span>${t[2]}</span></div>
+     <div class="sub2">${t[3]} · <span class="d">${t[4]}</span></div></div>`).join("");
+
+  /* ---------- legend ---------- */
+  document.getElementById("legend").innerHTML =
+    SERIES.map(x => `<span class="lg"><i class="sw" style="background:var(${x.css})"></i>${x.label}</span>`).join("") +
+    `<span class="lg"><i class="sw" style="background:var(--ink);border-radius:1px;height:2px"></i>Demand</span>`;
+
+  /* ---------- dispatch: stacked area ---------- */
+  const W = D.week, N = W.hour.length;
+  (function dispatch() {
+    const svg = document.getElementById("dispatch");
+    const L = 64, R = 14, T = 40, B = 30, w = 980 - L - R, h = 360 - T - B;
+    let peak = 0;
+    for (let i = 0; i < N; i++) {
+      let sum = 0; SERIES.forEach(v => sum += W[v.key][i]);
+      peak = Math.max(peak, sum, W.load_kw[i]);
+    }
+    const yMax = Math.ceil(peak);
+    const X = i => L + (i / (N - 1)) * w;
+    const Y = v => T + h - (v / yMax) * h;
+
+    for (let g = 0; g <= yMax; g += Math.max(1, Math.round(yMax / 4))) {
+      svg.appendChild(el("line", { x1: L, y1: Y(g), x2: L + w, y2: Y(g), class: "gridline" }));
+      const t = el("text", { x: L - 7, y: Y(g) + 3.5, class: "tick", "text-anchor": "end" });
+      t.textContent = g; svg.appendChild(t);
+    }
+    const ylab = el("text", { x: 11, y: T + h / 2, class: "alab", "text-anchor": "middle",
+                              transform: `rotate(-90 11 ${T + h / 2})` });
+    ylab.textContent = "kW"; svg.appendChild(ylab);
+
+    // feeder availability strips: state encoded as form, not only colour
+    [["ag_available", "--s-ag", "AG", 8],
+     ["village_available", "--s-village", "VILLAGE", 22]].forEach(([k, css, name, y]) => {
+      for (let i = 0; i < N; i++) {
+        if (!W[k][i]) continue;
+        svg.appendChild(el("rect", { x: X(i), y: y, width: Math.max(1, w / (N - 1)), height: 7,
+                                     fill: `var(${css})`, opacity: 0.85 }));
+      }
+      // label in the gutter: the strips span the full plot width, so there is no
+      // room for it inside without covering data
+      const lab = el("text", { x: L - 7, y: y + 6.5, class: "alab", "text-anchor": "end" });
+      lab.textContent = name; svg.appendChild(lab);
+    });
+
+    const base = new Array(N).fill(0);
+    SERIES.forEach(v => {
+      const top = base.map((b, i) => b + W[v.key][i]);
+      let d = `M ${X(0)} ${Y(base[0])}`;
+      for (let i = 0; i < N; i++) d += ` L ${X(i)} ${Y(top[i])}`;
+      for (let i = N - 1; i >= 0; i--) d += ` L ${X(i)} ${Y(base[i])}`;
+      // 2px surface gap between stacked fills keeps adjacent bands separable
+      svg.appendChild(el("path", { d: d + " Z", fill: `var(${v.css})`,
+                                   stroke: "var(--surface-2)", "stroke-width": 2 }));
+      for (let i = 0; i < N; i++) base[i] = top[i];
+    });
+
+    let dl = `M ${X(0)} ${Y(W.load_kw[0])}`;
+    for (let i = 1; i < N; i++) dl += ` L ${X(i)} ${Y(W.load_kw[i])}`;
+    svg.appendChild(el("path", { d: dl, fill: "none", stroke: "var(--ink)", "stroke-width": 2, opacity: 0.72 }));
+
+    svg.appendChild(el("line", { x1: L, y1: T + h, x2: L + w, y2: T + h, class: "axis" }));
+    for (let day = 0; day <= 7; day++) {
+      const i = Math.min(day * 24, N - 1);
+      const t = el("text", { x: X(i), y: T + h + 17, class: "tick", "text-anchor": "middle" });
+      t.textContent = day === 7 ? "" : "day " + (D.week.start_day + day); svg.appendChild(t);
+      if (day) svg.appendChild(el("line", { x1: X(i), y1: T, x2: X(i), y2: T + h, class: "gridline" }));
+    }
+
+    const cross = el("line", { x1: 0, y1: T, x2: 0, y2: T + h, stroke: "var(--ink-3)",
+                               "stroke-width": 1, opacity: 0 });
+    svg.appendChild(cross);
+    const tip = document.getElementById("tip-d");
+    const box = svg.parentElement;
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) / r.width * 980;
+      let i = Math.round((px - L) / w * (N - 1));
+      i = Math.max(0, Math.min(N - 1, i));
+      cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 0.55);
+      const rows = SERIES.filter(v => W[v.key][i] > 0.005).map(v =>
+        `<div class="r"><span><i style="background:var(${v.css})"></i>${v.label}</span><span>${W[v.key][i].toFixed(2)}</span></div>`).join("");
+      tip.innerHTML = `<div class="th">Day ${D.week.start_day + Math.floor(i / 24)}, ${String(i % 24).padStart(2, "0")}:00</div>` +
+        rows + `<div class="r" style="margin-top:4px;border-top:1px solid var(--rule);padding-top:4px">
+        <span>Demand</span><span>${W.load_kw[i].toFixed(2)} kW</span></div>`;
+      tip.classList.add("on");
+      const left = (ev.clientX - r.left);
+      tip.style.left = Math.min(Math.max(left + 14, 0), box.clientWidth - 185) + "px";
+      tip.style.top = "52px";
+    });
+    svg.addEventListener("pointerleave", () => { tip.classList.remove("on"); cross.setAttribute("opacity", 0); });
+  })();
+
+  /* ---------- battery soc ---------- */
+  (function soc() {
+    const svg = document.getElementById("soc");
+    const L = 64, R = 14, T = 16, B = 28, w = 980 - L - R, h = 200 - T - B;
+    const X = i => L + (i / (N - 1)) * w;
+    const Y = v => T + h - v * h;
+    [0, 0.25, 0.5, 0.75, 1].forEach(g => {
+      svg.appendChild(el("line", { x1: L, y1: Y(g), x2: L + w, y2: Y(g), class: "gridline" }));
+      const t = el("text", { x: L - 7, y: Y(g) + 3.5, class: "tick", "text-anchor": "end" });
+      t.textContent = Math.round(g * 100) + "%"; svg.appendChild(t);
+    });
+    svg.appendChild(el("line", { x1: L, y1: Y(0.2), x2: L + w, y2: Y(0.2),
+                                 stroke: "var(--warn)", "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
+    const fl = el("text", { x: L + 6, y: Y(0.2) - 6, class: "dlab", fill: "var(--warn)" });
+    fl.textContent = "20% reserve floor"; svg.appendChild(fl);
+
+    let d = `M ${X(0)} ${Y(W.soc[0])}`;
+    for (let i = 1; i < N; i++) d += ` L ${X(i)} ${Y(W.soc[i])}`;
+    svg.appendChild(el("path", { d: d + ` L ${X(N - 1)} ${Y(0)} L ${X(0)} ${Y(0)} Z`,
+                                 fill: "var(--s-batt)", opacity: 0.13 }));
+    svg.appendChild(el("path", { d, fill: "none", stroke: "var(--s-batt)", "stroke-width": 2 }));
+    svg.appendChild(el("line", { x1: L, y1: T + h, x2: L + w, y2: T + h, class: "axis" }));
+    for (let day = 0; day < 7; day++) {
+      const t = el("text", { x: X(day * 24), y: T + h + 16, class: "tick", "text-anchor": "middle" });
+      t.textContent = "day " + (D.week.start_day + day); svg.appendChild(t);
+    }
+    const tip = document.getElementById("tip-s"), box = svg.parentElement;
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect();
+      let i = Math.round(((ev.clientX - r.left) / r.width * 980 - L) / w * (N - 1));
+      i = Math.max(0, Math.min(N - 1, i));
+      tip.innerHTML = `<div class="th">Day ${D.week.start_day + Math.floor(i / 24)}, ${String(i % 24).padStart(2, "0")}:00</div>
+        <div class="r"><span>State of charge</span><span>${(W.soc[i] * 100).toFixed(0)}%</span></div>
+        <div class="r"><span>Charging</span><span>${W.charge_kw[i].toFixed(2)} kW</span></div>
+        <div class="r"><span>Discharging</span><span>${W.discharge_kw[i].toFixed(2)} kW</span></div>`;
+      tip.classList.add("on");
+      tip.style.left = Math.min(Math.max(ev.clientX - r.left + 14, 0), box.clientWidth - 175) + "px";
+      tip.style.top = "10px";
+    });
+    svg.addEventListener("pointerleave", () => tip.classList.remove("on"));
+  })();
+
+  /* ---------- irrigation windows ---------- */
+  (function windows() {
+    const svg = document.getElementById("windows");
+    const opts = D.advice.options;
+    const L = 48, R = 12, T = 16, B = 42, w = 480 - L - R, h = 300 - T - B;
+    const lo = Math.min(...opts.map(o => o.cost_inr)), hi = Math.max(...opts.map(o => o.cost_inr));
+    const yMin = Math.floor(lo * 0.94), yMax = Math.ceil(hi * 1.02);
+    const Y = v => T + h - ((v - yMin) / (yMax - yMin)) * h;
+    const bw = w / opts.length;
+
+    for (let k = 0; k <= 3; k++) {
+      const v = yMin + (yMax - yMin) * k / 3;
+      svg.appendChild(el("line", { x1: L, y1: Y(v), x2: L + w, y2: Y(v), class: "gridline" }));
+      const t = el("text", { x: L - 7, y: Y(v) + 3.5, class: "tick", "text-anchor": "end" });
+      t.textContent = Math.round(v); svg.appendChild(t);
+    }
+    const yl = el("text", { x: 11, y: T + h / 2, class: "alab", "text-anchor": "middle",
+                            transform: `rotate(-90 11 ${T + h / 2})` });
+    yl.textContent = "INR for the day"; svg.appendChild(yl);
+
+    opts.forEach((o, i) => {
+      const best = o.start_hour === D.advice.best_start;
+      const x = L + i * bw + 2.5, bh = Math.max(2, T + h - Y(o.cost_inr));
+      const g = el("g");
+      g.appendChild(el("rect", { x, y: Y(o.cost_inr), width: bw - 5, height: bh, rx: 4,
+        fill: best ? "var(--accent)" : "var(--s-ag)", opacity: best ? 1 : 0.5 }));
+      svg.appendChild(g);
+      if (i % 2 === 0 || best) {
+        const t = el("text", { x: x + (bw - 5) / 2, y: T + h + 15, class: "tick", "text-anchor": "middle" });
+        t.textContent = String(o.start_hour).padStart(2, "0"); svg.appendChild(t);
+      }
+      if (best) {
+        const t = el("text", { x: x + (bw - 5) / 2, y: Y(o.cost_inr) - 7, class: "dlab",
+                               fill: "var(--accent)", "text-anchor": "middle" });
+        t.textContent = "₹" + Math.round(o.cost_inr); svg.appendChild(t);
+      }
+      g.addEventListener("pointerenter", ev => {
+        const tip = document.getElementById("tip-w"), r = svg.getBoundingClientRect();
+        tip.innerHTML = `<div class="th">Start ${String(o.start_hour).padStart(2, "0")}:00</div>
+          <div class="r"><span>Day cost</span><span>₹${o.cost_inr.toFixed(1)}</span></div>
+          <div class="r"><span>Diesel</span><span>${o.diesel_litres.toFixed(2)} L</span></div>
+          ${best ? '<div class="r" style="color:var(--accent);margin-top:3px">recommended</div>' : ""}`;
+        tip.classList.add("on");
+        tip.style.left = Math.min(ev.clientX - r.left + 12, svg.parentElement.clientWidth - 165) + "px";
+        tip.style.top = "10px";
+      });
+      g.addEventListener("pointerleave", () => document.getElementById("tip-w").classList.remove("on"));
+    });
+    svg.appendChild(el("line", { x1: L, y1: T + h, x2: L + w, y2: T + h, class: "axis" }));
+    const xl = el("text", { x: L + w / 2, y: 300 - 8, class: "alab", "text-anchor": "middle" });
+    xl.textContent = "PUMP START HOUR"; svg.appendChild(xl);
+  })();
+
+  /* ---------- carbon curve ---------- */
+  (function carbon() {
+    const svg = document.getElementById("carbon");
+    const c = D.carbon_curve;
+    const L = 48, R = 12, T = 16, B = 42, w = 480 - L - R, h = 300 - T - B;
+    const lo = Math.min(...c), hi = Math.max(...c);
+    const yMin = Math.floor(lo * 20) / 20 - 0.05, yMax = Math.ceil(hi * 20) / 20 + 0.05;
+    const X = i => L + (i / (c.length - 1)) * w;
+    const Y = v => T + h - ((v - yMin) / (yMax - yMin)) * h;
+
+    for (let k = 0; k <= 3; k++) {
+      const v = yMin + (yMax - yMin) * k / 3;
+      svg.appendChild(el("line", { x1: L, y1: Y(v), x2: L + w, y2: Y(v), class: "gridline" }));
+      const t = el("text", { x: L - 7, y: Y(v) + 3.5, class: "tick", "text-anchor": "end" });
+      t.textContent = v.toFixed(2); svg.appendChild(t);
+    }
+    let d = `M ${X(0)} ${Y(c[0])}`;
+    for (let i = 1; i < c.length; i++) d += ` L ${X(i)} ${Y(c[i])}`;
+    svg.appendChild(el("path", { d: d + ` L ${X(c.length - 1)} ${Y(yMin)} L ${X(0)} ${Y(yMin)} Z`,
+                                 fill: "var(--s-diesel)", opacity: 0.12 }));
+    svg.appendChild(el("path", { d, fill: "none", stroke: "var(--s-diesel)", "stroke-width": 2 }));
+
+    const loI = c.indexOf(lo), hiI = c.indexOf(hi);
+    [[loI, lo, "cleanest", -10], [hiI, hi, "dirtiest", -10]].forEach(([i, v, name, dy]) => {
+      svg.appendChild(el("circle", { cx: X(i), cy: Y(v), r: 4.5, fill: "var(--s-diesel)",
+                                     stroke: "var(--surface-2)", "stroke-width": 2 }));
+      const t = el("text", { x: X(i), y: Y(v) + dy, class: "dlab", fill: "var(--ink-2)",
+                             "text-anchor": i > c.length / 2 ? "end" : "start" });
+      t.textContent = `${name} ${v.toFixed(3)} @ ${String(i).padStart(2, "0")}:00`;
+      svg.appendChild(t);
+    });
+    svg.appendChild(el("line", { x1: L, y1: T + h, x2: L + w, y2: T + h, class: "axis" }));
+    [0, 6, 12, 18, 23].forEach(i => {
+      const t = el("text", { x: X(i), y: T + h + 15, class: "tick", "text-anchor": "middle" });
+      t.textContent = String(i).padStart(2, "0"); svg.appendChild(t);
+    });
+    const xl = el("text", { x: L + w / 2, y: 300 - 8, class: "alab", "text-anchor": "middle" });
+    xl.textContent = "HOUR OF DAY"; svg.appendChild(xl);
+  })();
+
+  /* ---------- briefing ---------- */
+  document.getElementById("brief").innerHTML =
+    D.advice.briefing.map(b => `<li>${b}</li>`).join("");
+
+  /* ---------- kpi table ---------- */
+  (function kpiTable() {
+    const rows = [
+      ["Diesel", "diesel_litres", " L", 1],
+      ["Energy cost", "energy_cost_inr", "", 0, true],
+      ["Reliability", "reliability_pct", "%", 2],
+      ["Unserved load", "unmet_kwh", " kWh", 1],
+      ["Grid import", "grid_kwh", " kWh", 0],
+      ["Renewable share", "renewable_pct", "%", 1],
+      ["CO2", "co2_kg", " kg", 0]
+    ];
+    const cols = [["status_quo", "Status quo"], ["rules", "Rule-based"], ["optimiser", "Optimiser"]];
+    document.getElementById("kpi-table").innerHTML =
+      `<thead><tr><th>Metric</th>${cols.map(c => `<th class="n">${c[1]}</th>`).join("")}</tr></thead><tbody>` +
+      rows.map(([lab, key, unit, dp, rupee]) => `<tr${key === "energy_cost_inr" ? ' class="hi"' : ""}>` +
+        `<td>${lab}</td>` + cols.map(c =>
+          `<td class="n">${rupee ? "₹" : ""}${fmt(D.kpis[c[0]][key], dp)}${unit}</td>`).join("") + "</tr>").join("") +
+      "</tbody>";
+  })();
+
+  /* ---------- week table (relief for the light-mode contrast warn) ---------- */
+  (function weekTable() {
+    const head = ["Hour", "Demand", "Solar", "Ag feeder", "Village", "Battery", "Diesel", "SOC"];
+    let html = `<thead><tr>${head.map((x, i) => `<th${i ? ' class="n"' : ""}>${x}</th>`).join("")}</tr></thead><tbody>`;
+    for (let i = 0; i < N; i++) {
+      html += `<tr><td class="num">d${D.week.start_day + Math.floor(i / 24)} ${String(i % 24).padStart(2, "0")}:00</td>` +
+        [W.load_kw[i], W.solar_kw[i], W.ag_kw[i], W.village_kw[i], W.discharge_kw[i], W.diesel_kw[i]]
+          .map(v => `<td class="n">${v.toFixed(2)}</td>`).join("") +
+        `<td class="n">${(W.soc[i] * 100).toFixed(0)}%</td></tr>`;
+    }
+    document.getElementById("week-table").innerHTML = html + "</tbody>";
+  })();
+})();
+</script>

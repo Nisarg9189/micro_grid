@@ -14,6 +14,15 @@ python3.11 -m venv .venv
 Python 3.11 is required. `python-microgrid` 1.4.1 predates NumPy 2.0 and calls the removed
 `np.product`, so the scientific stack is pinned in `requirements.txt`.
 
+Optionally, for the Gujarati and Hindi farmer messages only:
+
+```bash
+cp .env.example .env   # then paste a free key from https://aistudio.google.com/apikey
+```
+
+Everything else runs without it, and the advice falls back to English. No key is committed
+to this repository and none should be.
+
 ## Run it
 
 ```bash
@@ -44,6 +53,154 @@ diesel moves emissions by 4 kg in a year, essentially nothing. The optimiser dis
 largely by importing more grid power, and once battery round-trip losses are counted the two
 emit about the same per kWh delivered. Cost and carbon are not the same objective here.
 
+## Changing the parameters yourself
+
+Nothing above is hard-coded into the result. `scripts/simulate.py` takes the site, the
+hardware, the loads and the tariffs on the command line, so you can point the model at a
+different district or a different set of prices and see whether the conclusions survive.
+
+```bash
+# the headline case - identical to run_baseline.py
+PYTHONPATH=src .venv/bin/python scripts/simulate.py
+
+# a different district: the Saurashtra coast, with a turbine on a taller mast
+PYTHONPATH=src .venv/bin/python scripts/simulate.py \
+    --lat 22.24 --lon 68.97 --site "Dwarka" --wind 3 --hub-height 50
+
+# different economics: cheaper diesel, dearer domestic power
+PYTHONPATH=src .venv/bin/python scripts/simulate.py --diesel-price 60 --village-tariff 9
+
+# put a price on carbon
+PYTHONPATH=src .venv/bin/python scripts/simulate.py --carbon-price 5
+
+# stop assuming the hardware and derive it instead (a few minutes)
+PYTHONPATH=src .venv/bin/python scripts/simulate.py --sweep
+
+# machine-readable output
+PYTHONPATH=src .venv/bin/python scripts/simulate.py --json out.json
+```
+
+`--help` lists everything. The parameters worth trying first:
+
+| Group | Flags | Default |
+| --- | --- | --- |
+| Site | `--lat` `--lon` `--site` `--year` | 24.17, 72.43, Palanpur, 2025 |
+| Hardware | `--solar` `--wind` `--battery` | 3 kWp, 0 kW, 5 kWh |
+| | `--battery-reserve` `--c-rate` `--hub-height` `--genset-kw` | 0.20, 0.25 C, 18 m, 6 kW |
+| Loads | `--pump-kw` `--household-kw` `--dairy-kw` `--cold-storage-kw` | 3.73, 0.4, 1.2, 0.8 kW |
+| Economics | `--diesel-price` `--ag-tariff` `--village-tariff` | Rs 98.39/L, Rs 1.50, Rs 5.00 |
+| | `--ag-kw` `--village-kw` `--carbon-price` `--grid-carbon` | 10 kW, 3 kW, Rs 0/kg, 0.71 kg/kWh |
+| Run | `--days` `--sweep` `--advice-day` `--json` | 365, off, day 20, none |
+
+Two things to know when you change them.
+
+**Any new location triggers a fresh weather download** from Open-Meteo (no key needed),
+cached afterwards under `data/weather`, so the first run at a new site is slower.
+
+**The tariffs and feeder capacities apply to all three controllers**, so the comparison
+stays honest. That was not true of an earlier version of this script: overriding
+`--village-tariff` priced only the optimiser and left the baselines at the default, which
+made the optimiser look worse than the rules. If you see a result where the optimiser
+loses, check that first -- it is more likely a pricing mismatch than a real finding.
+
+## Every command, and what it does
+
+| Command | Time | What it shows |
+| --- | --- | --- |
+| `scripts/serve.py` | instant | **Interactive console at 127.0.0.1:8000. Start here.** |
+| `scripts/simulate.py` | ~40 s | Any site, hardware and tariff you pass. Start here. |
+| `scripts/run_baseline.py` | ~40 s | The headline case: status quo, rule-based, optimiser |
+| `scripts/optimize_sizing.py [mpc\|rbc]` | ~25 min | Derives the hardware from the load profile |
+| `scripts/validate_forecast.py` | ~30 s | Synthesised forecast vs genuine archived forecasts |
+| `scripts/village_microgrid.py` | ~25 min | The whole village, with feeder routing enforced |
+| `scripts/village_scenario.py` | ~10 min | Coastal village where wind competes |
+| `scripts/farmer_message.py [gujarati\|hindi\|english]` | ~15 s | The message a farmer receives |
+| `scripts/build_dashboard.py` | ~3 min | Regenerates `report/dashboard_data.json` |
+
+All of them take the `PYTHONPATH=src .venv/bin/python` prefix. The sweeps use every core
+you have and print progress as they go.
+
+### On Windows
+
+The commands above are POSIX. The code itself is portable -- paths use `pathlib` and every
+script carries a `__main__` guard, which Windows needs because it spawns rather than forks
+processes. Only the shell syntax changes:
+
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:PYTHONPATH="src"; .venv\Scripts\python.exe scripts\simulate.py
+```
+
+In `cmd.exe` use `set PYTHONPATH=src` on its own line instead. Python 3.11 must already be
+installed -- the `py` launcher selects among versions, it does not fetch one.
+
+## The dashboard
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/build_dashboard.py   # rerun the model
+python3 -c "import pathlib; \
+ t=pathlib.Path('report/dashboard_react_template.html').read_text(); \
+ d=pathlib.Path('report/dashboard_data.json').read_text(); \
+ pathlib.Path('report/dashboard.html').write_text(t.replace('__DATA__', d))"
+```
+
+Then open `report/dashboard.html`. It is a React page with the model's output baked in as
+JSON: a week of hourly dispatch, battery state of charge, the irrigation-window comparison,
+the grid carbon curve and the KPI tables.
+
+**It is a snapshot, not a live tool.** The page cannot re-run the simulation, because the
+simulation is Python and the page is a browser document -- so changing a parameter means
+rerunning `build_dashboard.py` and rebuilding, as above. Edit `SOLAR_KWP`, `BATTERY_KWH`
+or `WEEK_START_DAY` at the top of `build_dashboard.py` to change what it plots. Making the
+controls live would need a local API server in front of the model, which is not built.
+
+## The interactive console
+
+**Full guide: [CONSOLE.md](CONSOLE.md)** -- every control, what changing it does, worked
+examples, and exactly which inputs are measured data and which are assumptions.
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/serve.py
+```
+
+Open <http://127.0.0.1:8000>. Change the site, the hardware, the loads or the tariffs on the
+left, then either let the model choose the hardware or run the optimiser on hardware you
+set. Every figure comes from a simulation run on the spot -- nothing on the page is
+pre-computed.
+
+Three buttons:
+
+- **Decide the size for me** sweeps solar x wind x battery, ranks every candidate by
+  annualised total cost subject to 99% reliability, and offers to apply the winner.
+- **Run the optimiser** runs status quo, rule-based control and the optimiser on the same
+  hardware, and plots the hourly dispatch, feeder availability and battery state of charge.
+- **Get the farmer's advice** ranks every pump start hour, then optionally re-words the
+  result in Gujarati or Hindi and shows whether every numeral survived verification.
+
+### What it can and cannot do
+
+**A shorter horizon.** A full 8,760-hour optimisation takes about 105 seconds and a full
+sizing sweep about 25 minutes, which is not something to wait for behind a button. The
+console defaults to 30 days (about 3 seconds) and allows up to 90. Every response carries
+the horizon it used, and the page shows it.
+
+**Read the ranking, not the rupees.** For sizing, capital is recovered per year while
+energy is only simulated over the horizon, so the energy cost is scaled up to a year to
+put the two on the same footing. That extrapolation assumes the window is seasonally
+representative, which a 30-day block is not: a winter month understates solar and will
+favour storage. Use 60-90 days for a fairer answer, and `scripts/optimize_sizing.py` for
+the authoritative annual one. The 60-day console run recommends 2 kWp + 10 kWh where the
+full-year sweep says 3 kWp + 5 kWh -- same territory, and the difference is exactly this
+seasonal bias.
+
+**Localhost only.** The endpoints run real CPU work and there is no authentication, so the
+server binds to 127.0.0.1 and is a review tool for one machine, not something to expose.
+
+API docs, if you want to drive it directly, are at `/api/docs`. The three endpoints are
+`POST /api/simulate`, `POST /api/size` and `POST /api/advice`, all taking the same
+parameter object.
+
 ## Layout
 
 ```
@@ -55,17 +212,27 @@ src/gramurja/
   farm.py       assembles the pymgrid Microgrid
   baseline.py   status-quo and rule-based reference runs
   mpc.py        receding-horizon dispatch, as a cvxpy linear program
+  advice.py     irrigation window search and the farmer briefing
+  explain.py    Gemini for phrasing only, with number verification
+  village.py    community load model with pump diversity
   sizing.py     capital costing and the parallel configuration sweep
   kpi.py        diesel, cost, CO2 and reliability from a run log
+  api.py        FastAPI endpoints behind the console
 scripts/
-  run_baseline.py       the two reference runs
+  simulate.py           parameterised entry point - any site, hardware, tariff
+  serve.py              the interactive console at 127.0.0.1:8000
+  run_baseline.py       the headline case, three controllers
   optimize_sizing.py    derive hardware for the Banaskantha farm
   village_scenario.py   the coastal village case, where wind competes
   village_microgrid.py  a whole Banaskantha village, not one farm
   validate_forecast.py  synthesised forecast vs genuine archived forecasts
+  farmer_message.py     the message a farmer receives, via Gemini
+  build_dashboard.py    regenerates the dashboard's data
 report/
   mid-evaluation.html   results write-up
   architecture.html     system and agent-layer diagrams
+  dashboard.html        the operations board (React, built from the template)
+  console.html          the interactive console served by scripts/serve.py
 ```
 
 The capacities in `DEFAULT_CONFIG` are reference values that the sizing sweep scales
@@ -90,9 +257,9 @@ diesel reduction. A myopic controller never buys cheap agricultural-feeder power
 displace diesel later, so it values storage at nothing and sizes it away.
 
 Current recommendation, on 2025 reanalysis weather and day-ahead forecasts: **3 kWp solar, no
-wind, 5 kWh battery** -- Rs 84,565/yr all-in against a Rs 167,737/yr status quo, 83% less
+wind, 5 kWh battery** -- Rs 84,709/yr all-in against a Rs 167,737/yr status quo, 83% less
 diesel, reliability 94.1% to 100%. The cost surface is flat, with the top dozen
-configurations inside 7%, so the exact sizing is not critical. Spending Rs 1,460/yr more
+configurations inside 7%, so the exact sizing is not critical. Spending Rs 1,509/yr more
 for 10 kWh of battery instead of 5 buys another 10 points of diesel reduction.
 
 ## Weather
@@ -238,19 +405,19 @@ clean and discharge dirty.
 
 | Carbon price | Solar | Battery | Diesel | CO2 | CO2 cut | Farmer's bill | Abatement |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Rs 0/kg | 3 kWp | 5 kWh | 182 L | 8,302 kg | 31.8% | Rs 84,565 | -- |
-| Rs 2/kg | 3 kWp | 5 kWh | 197 L | 8,110 kg | 33.3% | Rs 86,079 | Rs 7.89/kg |
-| Rs 5/kg | 5 kWp | 10 kWh | 94 L | 6,350 kg | 47.8% | Rs 92,709 | Rs 4.17/kg |
-| Rs 15/kg | 8 kWp | 20 kWh | 34 L | 3,855 kg | 68.3% | Rs 119,718 | Rs 7.91/kg |
+| Rs 0/kg | 3 kWp | 5 kWh | 184 L | 8,290 kg | 31.9% | Rs 84,709 | -- |
+| Rs 2/kg | 3 kWp | 5 kWh | 197 L | 8,110 kg | 33.3% | Rs 86,077 | Rs 7.60/kg |
+| Rs 5/kg | 5 kWp | 10 kWh | 94 L | 6,349 kg | 47.8% | Rs 92,701 | Rs 4.12/kg |
+| Rs 15/kg | 8 kWp | 20 kWh | 34 L | 3,858 kg | 68.3% | Rs 119,738 | Rs 7.90/kg |
 
 The farmer's bill column strips out the notional carbon charge, which nobody actually pays;
 abatement is measured against the Rs 0 row.
 
 Two different mechanisms are at work. At Rs 2/kg the hardware does not change at all -- the
 gain is pure dispatch, the optimiser re-timing the battery to charge through the midday
-trough and discharge into the evening peak, worth 192 kg a year for no capital whatsoever.
-From Rs 5/kg upward it buys capacity instead, and capacity is the cheaper lever: Rs 4.17/kg
-against Rs 7.89 for re-timing, because it removes far more carbon per rupee spent.
+trough and discharge into the evening peak, worth 180 kg a year for no capital whatsoever.
+From Rs 5/kg upward it buys capacity instead, and capacity is the cheaper lever: Rs 4.12/kg
+against Rs 7.60 for re-timing, because it removes far more carbon per rupee spent.
 
 The farmer pays that extra cost while the carbon benefit is external, so without an
 incentive the farmer rationally buys the smaller system. That gap is an argument aimed at

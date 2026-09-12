@@ -1,0 +1,512 @@
+<title>GramUrja Control Console</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground:#F2F6F8; --surface:#FCFCFB; --surface-2:#FFFFFF; --sunk:#E9EFF3;
+    --ink:#101820; --ink-2:#4B5B65; --ink-3:#6F808B; --rule:#D6E0E7; --rule-2:#B4C4CF;
+    --accent:#0E6470; --accent-soft:#DEEEF0; --good:#1B7F4E; --warn:#A2452C;
+    --s-ag:#2a78d6; --s-diesel:#eb6834; --s-batt:#1baf7a; --s-solar:#eda100; --s-village:#e87ba4;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground:#0B1016; --surface:#1A1A19; --surface-2:#141C24; --sunk:#202A33;
+    --ink:#EAF1F6; --ink-2:#A9BAC6; --ink-3:#7C8D99; --rule:#26323C; --rule-2:#384856;
+    --accent:#49B3C0; --accent-soft:#143034; --good:#5CB98C; --warn:#D97B5C;
+    --s-ag:#3987e5; --s-diesel:#d95926; --s-batt:#199e70; --s-solar:#c98500; --s-village:#d55181;
+  } }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:#0B1016; --surface:#1A1A19; --surface-2:#141C24; --sunk:#202A33;
+    --ink:#EAF1F6; --ink-2:#A9BAC6; --ink-3:#7C8D99; --rule:#26323C; --rule-2:#384856;
+    --accent:#49B3C0; --accent-soft:#143034; --good:#5CB98C; --warn:#D97B5C;
+    --s-ag:#3987e5; --s-diesel:#d95926; --s-batt:#199e70; --s-solar:#c98500; --s-village:#d55181;
+  }
+  body { background:var(--ground); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif;
+         font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1220px; margin:0 auto; padding:0 20px 72px; }
+  header { padding:26px 0 14px; border-bottom:2px solid var(--ink); margin-bottom:20px; }
+  h1 { font-size:21px; font-weight:600; margin:0; letter-spacing:-0.01em; }
+  .sub { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3); margin-top:5px; }
+
+  .cols { display:grid; gap:22px; grid-template-columns:300px minmax(0,1fr); align-items:start; }
+  @media (max-width:900px) { .cols { grid-template-columns:1fr; } }
+
+  .panel { background:var(--surface-2); border:1px solid var(--rule); padding:16px; margin-bottom:20px; }
+  .panel h2 { font-size:14px; font-weight:600; margin:0 0 4px; }
+  .panel .note { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-3); }
+  .pdesc { font-size:12.5px; color:var(--ink-2); margin:6px 0 12px; }
+
+  fieldset { border:none; padding:0; margin:0 0 14px; }
+  legend { font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-3);
+           padding:0 0 7px; }
+  .fld { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+  .fld label { font-size:12.5px; color:var(--ink-2); }
+  .fld input, .fld select {
+    width:92px; padding:4px 6px; font-family:"IBM Plex Mono",monospace; font-size:12px;
+    background:var(--surface); color:var(--ink); border:1px solid var(--rule-2); border-radius:3px;
+    font-variant-numeric:tabular-nums; }
+  .fld select { width:118px; }
+  .fld input:focus-visible, .fld select:focus-visible, button:focus-visible {
+    outline:2px solid var(--accent); outline-offset:1px; }
+
+  .presets { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .chip { font-family:"IBM Plex Mono",monospace; font-size:11px; padding:4px 9px; cursor:pointer;
+          background:var(--sunk); color:var(--ink-2); border:1px solid var(--rule-2); border-radius:3px; }
+  .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  button.go { width:100%; padding:9px 12px; font-family:"IBM Plex Sans",sans-serif; font-size:13px;
+    font-weight:600; cursor:pointer; border:1px solid var(--accent); border-radius:3px;
+    background:var(--accent); color:#fff; margin-bottom:8px; }
+  button.alt { background:var(--surface); color:var(--accent); }
+  button.go:disabled { opacity:.5; cursor:progress; }
+
+  .tiles { display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule);
+           grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
+  .tile { background:var(--surface-2); padding:13px 14px; }
+  .tile .lab { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
+  .tile .big { font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+               font-size:23px; font-weight:600; line-height:1.05; }
+  .tile .big span { font-size:12px; font-weight:400; color:var(--ink-2); }
+  .tile .d { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--good); margin-top:5px; }
+
+  .caveat { background:var(--sunk); border-left:3px solid var(--warn); padding:10px 13px;
+            font-size:12.5px; color:var(--ink-2); margin-bottom:16px; }
+  .legend { display:flex; flex-wrap:wrap; gap:13px; margin:0 0 9px; }
+  .lg { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-2); }
+  .sw { width:11px; height:11px; border-radius:2px; flex:none; }
+  svg.chart { display:block; width:100%; height:auto; }
+  .gridline { stroke:var(--rule); stroke-width:1; }
+  .axis { stroke:var(--rule-2); stroke-width:1; }
+  .tick { font-family:"IBM Plex Mono",monospace; font-size:10px; fill:var(--ink-3); }
+  .alab { font-family:"IBM Plex Mono",monospace; font-size:10px; fill:var(--ink-3); letter-spacing:.06em; }
+  .dlab { font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:500; }
+
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th { text-align:left; font-size:10px; letter-spacing:.07em; text-transform:uppercase;
+       color:var(--ink-3); padding:6px 9px; border-bottom:1px solid var(--rule-2); white-space:nowrap; }
+  td { padding:6px 9px; border-bottom:1px solid var(--rule); }
+  th.n, td.n { text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+  tr.hi td { background:var(--accent-soft); font-weight:600; }
+  .brief { background:var(--sunk); border-left:3px solid var(--accent); padding:12px 14px; }
+  .brief ul { margin:0; padding-left:17px; } .brief li { margin-bottom:4px; font-size:13px; }
+  .msg { font-size:15px; line-height:1.7; margin:10px 0 0; padding:12px 14px;
+         background:var(--surface); border:1px solid var(--rule-2); }
+  .ok { color:var(--good); font-family:"IBM Plex Mono",monospace; font-size:11.5px; }
+  .bad { color:var(--warn); font-family:"IBM Plex Mono",monospace; font-size:11.5px; }
+  .spin { font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-3); padding:22px 0; }
+
+  /* Work happens on the server and can take a minute, so the wait needs a visible
+     heartbeat and an elapsed count - a frozen page reads as a broken one. */
+  .busy { display:flex; align-items:center; gap:13px; background:var(--surface-2);
+          border:1px solid var(--rule); border-left:3px solid var(--accent);
+          padding:13px 15px; margin-bottom:18px; position:relative; overflow:hidden; }
+  .spinner { width:18px; height:18px; flex:none; border-radius:50%; box-sizing:border-box;
+             border:2px solid var(--rule-2); border-top-color:var(--accent);
+             animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .busy-t { font-size:13px; font-weight:600; }
+  .busy-s { font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-3);
+            font-variant-numeric:tabular-nums; margin-top:2px; }
+  .busybar { position:absolute; left:0; bottom:0; height:2px; width:100%; background:var(--rule); }
+  .busybar i { display:block; height:100%; width:34%; background:var(--accent);
+               animation:slide 1.5s ease-in-out infinite; }
+  @keyframes slide { from { transform:translateX(-100%); } to { transform:translateX(320%); } }
+  .stale { opacity:.42; pointer-events:none; transition:opacity .15s; }
+  @media (prefers-reduced-motion:reduce) {
+    .spinner { animation:none; }
+    .busybar i { animation:none; width:100%; opacity:.45; }
+  }
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const { createElement: h, useState, useCallback, useEffect, Fragment } = React;
+  const fmt = (v, d = 0) => (v == null ? "—" :
+    v.toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d }));
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const SERIES = [
+    { key: "ag_kw", label: "Agricultural feeder", v: "--s-ag" },
+    { key: "diesel_kw", label: "Diesel", v: "--s-diesel" },
+    { key: "discharge_kw", label: "Battery", v: "--s-batt" },
+    { key: "solar_kw", label: "Solar", v: "--s-solar" },
+    { key: "village_kw", label: "Village feeder", v: "--s-village" }
+  ];
+
+  const PRESETS = [
+    { name: "Palanpur", lat: 24.17, lon: 72.43, site: "Palanpur, Banaskantha" },
+    { name: "Dwarka", lat: 22.24, lon: 68.97, site: "Dwarka" },
+    { name: "Mandvi", lat: 22.83, lon: 69.35, site: "Mandvi, Kutch" },
+    { name: "Jamnagar", lat: 22.47, lon: 70.06, site: "Jamnagar" }
+  ];
+
+  const DEFAULTS = {
+    lat: 24.17, lon: 72.43, site: "Palanpur, Banaskantha", year: 2025, days: 30,
+    solar: 3, wind: 0, battery: 5, battery_reserve: 0.2, c_rate: 0.25,
+    hub_height: 18, genset_kw: 6,
+    pump_kw: 3.73, household_kw: 0.4, dairy_kw: 1.2, cold_storage_kw: 0.8,
+    diesel_price: 98.39, ag_tariff: 1.5, village_tariff: 5, ag_kw: 10, village_kw: 3,
+    carbon_price: 0, grid_carbon: 0.71, advice_day: 5, language: "english"
+  };
+
+  async function post(path, body) {
+    const r = await fetch(path, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(`${path} -> ${r.status} ${await r.text()}`);
+    return r.json();
+  }
+
+  /* ---------- controls ---------- */
+
+  function Num({ label, k, p, set, step }) {
+    return h("div", { className: "fld" },
+      h("label", { htmlFor: k }, label),
+      h("input", {
+        id: k, type: "number", step: step || "any", value: p[k],
+        onChange: (e) => set(k, e.target.value === "" ? "" : Number(e.target.value))
+      }));
+  }
+
+  function Controls({ p, set, onRun, onSize, onAdvise, busy }) {
+    const active = PRESETS.find((x) => x.lat === p.lat && x.lon === p.lon);
+    return h("div", null,
+      h("section", { className: "panel" },
+        h("h2", null, "Site"),
+        h("div", { className: "presets" }, PRESETS.map((x) =>
+          h("button", {
+            key: x.name, className: "chip" + (active && active.name === x.name ? " on" : ""),
+            onClick: () => set(null, { lat: x.lat, lon: x.lon, site: x.site })
+          }, x.name))),
+        h(Num, { label: "Latitude", k: "lat", p, set, step: "0.01" }),
+        h(Num, { label: "Longitude", k: "lon", p, set, step: "0.01" }),
+        h(Num, { label: "Days to simulate", k: "days", p, set, step: "1" })),
+
+      h("section", { className: "panel" },
+        h("h2", null, "Hardware"),
+        h("p", { className: "pdesc" }, "Set it yourself, or let the model decide."),
+        h(Num, { label: "Solar kWp", k: "solar", p, set, step: "0.5" }),
+        h(Num, { label: "Wind kW", k: "wind", p, set, step: "0.5" }),
+        h(Num, { label: "Hub height m", k: "hub_height", p, set, step: "1" }),
+        h(Num, { label: "Battery kWh", k: "battery", p, set, step: "1" }),
+        h(Num, { label: "Reserve floor", k: "battery_reserve", p, set, step: "0.05" }),
+        h(Num, { label: "Genset kW", k: "genset_kw", p, set, step: "1" })),
+
+      h("section", { className: "panel" },
+        h("h2", null, "Load"),
+        h(Num, { label: "Pump kW", k: "pump_kw", p, set, step: "0.1" }),
+        h(Num, { label: "Household kW", k: "household_kw", p, set, step: "0.1" }),
+        h(Num, { label: "Dairy kW", k: "dairy_kw", p, set, step: "0.1" }),
+        h(Num, { label: "Cold storage kW", k: "cold_storage_kw", p, set, step: "0.1" })),
+
+      h("section", { className: "panel" },
+        h("h2", null, "Prices and feeders"),
+        h(Num, { label: "Diesel ₹/L", k: "diesel_price", p, set, step: "1" }),
+        h(Num, { label: "Ag tariff ₹/kWh", k: "ag_tariff", p, set, step: "0.25" }),
+        h(Num, { label: "Ag feeder kW", k: "ag_kw", p, set, step: "1" }),
+        h(Num, { label: "Village ₹/kWh", k: "village_tariff", p, set, step: "0.25" }),
+        h(Num, { label: "Village feeder kW", k: "village_kw", p, set, step: "1" }),
+        h(Num, { label: "Carbon ₹/kg", k: "carbon_price", p, set, step: "1" }),
+        h(Num, { label: "Grid kg CO₂/kWh", k: "grid_carbon", p, set, step: "0.01" })),
+
+      h("section", { className: "panel" },
+        h("h2", null, "Run"),
+        h("button", { className: "go", onClick: onSize, disabled: !!busy },
+          busy === "size" ? "Sizing…" : "Decide the size for me"),
+        h("button", { className: "go alt", onClick: onRun, disabled: !!busy },
+          busy === "run" ? "Optimising…" : "Run the optimiser"),
+        h("div", { className: "fld", style: { marginTop: 10 } },
+          h("label", { htmlFor: "language" }, "Advice language"),
+          h("select", {
+            id: "language", value: p.language,
+            onChange: (e) => set("language", e.target.value)
+          }, ["english", "gujarati", "hindi"].map((l) =>
+            h("option", { key: l, value: l }, l)))),
+        h(Num, { label: "Advice for day", k: "advice_day", p, set, step: "1" }),
+        h("button", { className: "go alt", onClick: onAdvise, disabled: !!busy },
+          busy === "advice" ? "Thinking…" : "Get the farmer's advice")));
+  }
+
+  /* ---------- results ---------- */
+
+  function Tiles({ k }) {
+    const q = k.status_quo, o = k.optimiser;
+    const items = [
+      ["Diesel", fmt(o.diesel_litres, 1), "L", `was ${fmt(q.diesel_litres, 1)} L`],
+      ["Energy cost", "₹" + fmt(o.cost_inr), "", `was ₹${fmt(q.cost_inr)}`],
+      ["Reliability", fmt(o.reliability_pct, 1), "%", `was ${fmt(q.reliability_pct, 1)}%`],
+      ["CO₂", fmt(o.co2_kg), "kg", `was ${fmt(q.co2_kg)} kg`]
+    ];
+    return h("div", { className: "tiles" }, items.map((t) =>
+      h("div", { className: "tile", key: t[0] },
+        h("div", { className: "lab" }, t[0]),
+        h("div", { className: "big" }, t[1], " ", h("span", null, t[2])),
+        h("div", { className: "d" }, t[3]))));
+  }
+
+  function KpiTable({ k }) {
+    const rows = [["Diesel", "diesel_litres", " L", 1], ["Energy cost", "cost_inr", "", 0],
+      ["Reliability", "reliability_pct", "%", 2], ["Unserved", "unmet_kwh", " kWh", 1],
+      ["Grid import", "grid_kwh", " kWh", 0], ["Renewable", "renewable_pct", "%", 1],
+      ["CO₂", "co2_kg", " kg", 0]];
+    const cols = [["status_quo", "Status quo"], ["rules", "Rule-based"], ["optimiser", "Optimiser"]];
+    return h("table", null,
+      h("thead", null, h("tr", null, h("th", null, "Metric"),
+        cols.map((c) => h("th", { className: "n", key: c[0] }, c[1])))),
+      h("tbody", null, rows.map((r) => h("tr", { key: r[1], className: r[1] === "cost_inr" ? "hi" : undefined },
+        h("td", null, r[0]),
+        cols.map((c) => h("td", { className: "n", key: c[0] },
+          (r[1] === "cost_inr" ? "₹" : "") + fmt(k[c[0]][r[1]], r[3]) + r[2]))))));
+  }
+
+  function Dispatch({ s }) {
+    const N = s.load_kw.length;
+    const VB = 980, L = 60, R = 14, T = 34, B = 28, w = VB - L - R, hgt = 340 - T - B;
+    let peak = 0;
+    for (let i = 0; i < N; i++) {
+      let sum = 0; for (const x of SERIES) sum += s[x.key][i];
+      peak = Math.max(peak, sum, s.load_kw[i]);
+    }
+    const yMax = Math.max(1, Math.ceil(peak));
+    const X = (i) => L + (i / (N - 1)) * w, Y = (v) => T + hgt - (v / yMax) * hgt;
+    const base = new Array(N).fill(0);
+    const bands = SERIES.map((x) => {
+      const top = base.map((b, i) => b + s[x.key][i]);
+      let d = `M ${X(0)} ${Y(base[0])}`;
+      for (let i = 0; i < N; i++) d += ` L ${X(i)} ${Y(top[i])}`;
+      for (let i = N - 1; i >= 0; i--) d += ` L ${X(i)} ${Y(base[i])}`;
+      for (let i = 0; i < N; i++) base[i] = top[i];
+      return { d: d + " Z", v: x.v, key: x.key };
+    });
+    let load = `M ${X(0)} ${Y(s.load_kw[0])}`;
+    for (let i = 1; i < N; i++) load += ` L ${X(i)} ${Y(s.load_kw[i])}`;
+    const step = Math.max(1, Math.round(yMax / 4)), grid = [];
+    for (let g = 0; g <= yMax; g += step) grid.push(g);
+    const dayTicks = []; const totalDays = Math.round(N / 24);
+    for (let d = 0; d < totalDays; d += Math.max(1, Math.round(totalDays / 8))) dayTicks.push(d);
+
+    return h(Fragment, null,
+      h("div", { className: "legend" },
+        SERIES.map((x) => h("span", { className: "lg", key: x.key },
+          h("i", { className: "sw", style: { background: `var(${x.v})` } }), x.label)),
+        h("span", { className: "lg" },
+          h("i", { className: "sw", style: { background: "var(--ink)", height: 2, borderRadius: 1 } }),
+          "Demand")),
+      h("svg", { className: "chart", viewBox: `0 0 ${VB} 340`, role: "img",
+                 "aria-label": "Hourly dispatch by source, stacked, with feeder availability strips" },
+        grid.map((g) => h(Fragment, { key: g },
+          h("line", { x1: L, y1: Y(g), x2: L + w, y2: Y(g), className: "gridline" }),
+          h("text", { x: L - 7, y: Y(g) + 3.5, className: "tick", textAnchor: "end" }, g))),
+        h("text", { x: 13, y: T + hgt / 2, className: "alab", textAnchor: "middle",
+                    transform: `rotate(-90 13 ${T + hgt / 2})` }, "kW"),
+        [["ag_available", "--s-ag", "AG", 6], ["village_available", "--s-village", "VILLAGE", 19]]
+          .map(([k, v, name, y]) => h(Fragment, { key: k },
+            s[k].map((on, i) => on ? h("rect", { key: i, x: X(i), y,
+              width: Math.max(1, w / (N - 1)), height: 7, fill: `var(${v})`, opacity: .85 }) : null),
+            h("text", { x: L - 7, y: y + 6.5, className: "alab", textAnchor: "end" }, name))),
+        bands.map((b) => h("path", { key: b.key, d: b.d, fill: `var(${b.v})`,
+                                     stroke: "var(--surface-2)", strokeWidth: 2 })),
+        h("path", { d: load, fill: "none", stroke: "var(--ink)", strokeWidth: 2, opacity: .72 }),
+        h("line", { x1: L, y1: T + hgt, x2: L + w, y2: T + hgt, className: "axis" }),
+        dayTicks.map((d) => h("text", { key: d, x: X(d * 24), y: T + hgt + 16,
+          className: "tick", textAnchor: "middle" }, "d" + (d + 1)))));
+  }
+
+  function Soc({ s }) {
+    const N = s.soc.length;
+    const VB = 980, L = 60, R = 14, T = 14, B = 24, w = VB - L - R, hgt = 170 - T - B;
+    const X = (i) => L + (i / (N - 1)) * w, Y = (v) => T + hgt - v * hgt;
+    let d = `M ${X(0)} ${Y(s.soc[0])}`;
+    for (let i = 1; i < N; i++) d += ` L ${X(i)} ${Y(s.soc[i])}`;
+    return h("svg", { className: "chart", viewBox: `0 0 ${VB} 170`, role: "img",
+                      "aria-label": "Battery state of charge against the reserve floor" },
+      [0, .5, 1].map((g) => h(Fragment, { key: g },
+        h("line", { x1: L, y1: Y(g), x2: L + w, y2: Y(g), className: "gridline" }),
+        h("text", { x: L - 7, y: Y(g) + 3.5, className: "tick", textAnchor: "end" },
+          Math.round(g * 100) + "%"))),
+      h("path", { d: d + ` L ${X(N - 1)} ${Y(0)} L ${X(0)} ${Y(0)} Z`, fill: "var(--s-batt)", opacity: .13 }),
+      h("path", { d, fill: "none", stroke: "var(--s-batt)", strokeWidth: 2 }),
+      h("line", { x1: L, y1: Y(.2), x2: L + w, y2: Y(.2), stroke: "var(--warn)",
+                  strokeWidth: 1.5, strokeDasharray: "5 4" }),
+      h("text", { x: L + 6, y: Y(.2) - 6, className: "dlab", fill: "var(--warn)" }, "reserve floor"),
+      h("line", { x1: L, y1: T + hgt, x2: L + w, y2: T + hgt, className: "axis" }));
+  }
+
+  function SizeResult({ d, onApply }) {
+    if (!d.recommended) return h("p", { className: "pdesc" }, d.message);
+    const r = d.recommended;
+    return h(Fragment, null,
+      h("div", { className: "caveat" }, d.meta.caveat),
+      h("div", { className: "tiles", style: { marginBottom: 14 } },
+        [["Solar", r.solar_kwp, "kWp"], ["Wind", r.wind_kw, "kW"], ["Battery", r.battery_kwh, "kWh"],
+         ["Total", "₹" + fmt(r.total_inr), "/yr"]].map((t) =>
+          h("div", { className: "tile", key: t[0] },
+            h("div", { className: "lab" }, t[0]),
+            h("div", { className: "big" }, t[1], " ", h("span", null, t[2]))))),
+      h("button", { className: "go", style: { maxWidth: 280 },
+                    onClick: () => onApply(r) }, "Use this hardware and run the optimiser"),
+      h("table", { style: { marginTop: 12 } },
+        h("thead", null, h("tr", null,
+          ["Solar", "Wind", "Battery", "Diesel", "Reliab.", "Capital/yr", "Energy/yr", "Total/yr"]
+            .map((x, i) => h("th", { key: x, className: i ? "n" : undefined }, x)))),
+        h("tbody", null, d.candidates.map((c, i) =>
+          h("tr", { key: i, className: i === 0 ? "hi" : undefined },
+            h("td", null, fmt(c.solar_kwp) + " kWp"),
+            h("td", { className: "n" }, fmt(c.wind_kw)),
+            h("td", { className: "n" }, fmt(c.battery_kwh)),
+            h("td", { className: "n" }, fmt(c.diesel_litres, 1) + " L"),
+            h("td", { className: "n" }, fmt(c.reliability_pct, 1) + "%"),
+            h("td", { className: "n" }, "₹" + fmt(c.capital_inr)),
+            h("td", { className: "n" }, "₹" + fmt(c.energy_inr)),
+            h("td", { className: "n" }, "₹" + fmt(c.total_inr)))))));
+  }
+
+  function AdviceResult({ d }) {
+    return h(Fragment, null,
+      h("div", { className: "brief" },
+        h("ul", null, d.briefing.map((b, i) => h("li", { key: i }, b)))),
+      d.message && h(Fragment, null,
+        h("p", { className: "msg" }, d.message),
+        h("p", { className: d.numbers_verified ? "ok" : "bad" },
+          d.numbers_verified
+            ? "✓ every numeral in this message traces back to the optimiser"
+            : "✗ unverified figures " + JSON.stringify(d.unverified_numbers) +
+              " — showing the deterministic English instead")),
+      h("table", { style: { marginTop: 12 } },
+        h("thead", null, h("tr", null, h("th", null, "Pump start"),
+          h("th", { className: "n" }, "Diesel"), h("th", { className: "n" }, "Day cost"))),
+        h("tbody", null, d.options.map((o) =>
+          h("tr", { key: o.start_hour, className: o.start_hour === d.best_start ? "hi" : undefined },
+            h("td", null, pad(o.start_hour) + ":00"),
+            h("td", { className: "n" }, fmt(o.diesel_litres, 2) + " L"),
+            h("td", { className: "n" }, "₹" + fmt(o.cost_inr, 1)))))));
+  }
+
+  /* ---------- waiting ---------- */
+
+  const WAITING = {
+    run: ["Running the receding-horizon optimiser", "about 3 seconds at 30 days"],
+    size: ["Simulating every candidate configuration", "20 to 60 seconds"],
+    advice: ["Testing every pump start hour", "10 to 20 seconds"]
+  };
+
+  function Busy({ kind }) {
+    const [seconds, setSeconds] = useState(0);
+    useEffect(() => {
+      const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+      return () => clearInterval(id);
+    }, [kind]);
+    const [what, howLong] = WAITING[kind] || ["Working", ""];
+    return h("div", { className: "busy", role: "status", "aria-live": "polite" },
+      h("div", { className: "spinner" }),
+      h("div", null,
+        h("div", { className: "busy-t" }, what, "\u2026"),
+        h("div", { className: "busy-s" },
+          `usually ${howLong} \u00b7 ${seconds}s elapsed`)),
+      h("div", { className: "busybar" }, h("i", null)));
+  }
+
+  /* ---------- app ---------- */
+
+  function App() {
+    const [p, setP] = useState(DEFAULTS);
+    const [busy, setBusy] = useState(null);
+    const [err, setErr] = useState(null);
+    const [run, setRun] = useState(null);
+    const [size, setSize] = useState(null);
+    const [advice, setAdvice] = useState(null);
+
+    const set = useCallback((k, v) => setP((prev) =>
+      k === null ? { ...prev, ...v } : { ...prev, [k]: v }), []);
+
+    const call = useCallback(async (kind, path, store, extra) => {
+      setBusy(kind); setErr(null);
+      try { store(await post(path, { ...p, ...(extra || {}) })); }
+      catch (e) { setErr(String(e.message || e)); }
+      finally { setBusy(null); }
+    }, [p]);
+
+    const applySize = useCallback(async (r) => {
+      const next = { ...p, solar: r.solar_kwp, wind: r.wind_kw, battery: r.battery_kwh };
+      setP(next); setBusy("run"); setErr(null);
+      try { setRun(await post("/api/simulate", next)); }
+      catch (e) { setErr(String(e.message || e)); }
+      finally { setBusy(null); }
+    }, [p]);
+
+    return h("div", { className: "wrap" },
+      h("header", null,
+        h("h1", null, "GramUrja Control Console"),
+        h("div", { className: "sub" },
+          "Change anything on the left, then either let the model size the system or run the "
+          + "optimiser on hardware you choose. Every number comes from a live simulation.")),
+      err && h("div", { className: "caveat", style: { borderLeftColor: "var(--warn)" } },
+        "Request failed: ", err),
+      h("div", { className: "cols" },
+        h(Controls, {
+          p, set, busy,
+          onRun: () => call("run", "/api/simulate", setRun),
+          onSize: () => call("size", "/api/size", setSize),
+          onAdvise: () => call("advice", "/api/advice", setAdvice)
+        }),
+        h("div", { "aria-busy": busy ? "true" : "false" },
+          busy && h(Busy, { kind: busy }),
+          h("div", { className: busy ? "stale" : undefined },
+          size && h("section", { className: "panel" },
+            h("h2", null, "What size is required"),
+            h("p", { className: "pdesc" },
+              `Every combination simulated and ranked by annualised total cost, subject to `
+              + `99% reliability. ${size.meta.evaluated} configurations evaluated.`),
+            h(SizeResult, { d: size, onApply: applySize })),
+
+          run && h(Fragment, null,
+            h("section", { className: "panel" },
+              h("h2", null, "Result"),
+              h("div", { className: "note" },
+                `${run.meta.site} · solar ${fmt(run.resource.solar_kwh_per_kwp_year)} kWh/kWp/yr · `
+                + `wind CF ${run.resource.wind_capacity_factor_pct}% · `
+                + `demand ${fmt(run.resource.demand_kwh)} kWh over ${run.meta.days} days`),
+              h("div", { className: "caveat", style: { marginTop: 12 } }, run.meta.caveat),
+              h(Tiles, { k: run.kpis })),
+            h("section", { className: "panel" },
+              h("h2", null, "Where every hour's energy came from"),
+              h("p", { className: "pdesc" },
+                "Strips above the plot show when each feeder was actually available "
+                + "(AG = agricultural, VILLAGE = domestic)."),
+              h(Dispatch, { s: run.series })),
+            h("section", { className: "panel" },
+              h("h2", null, "Battery state of charge"),
+              h(Soc, { s: run.series })),
+            h("section", { className: "panel" },
+              h("h2", null, "All three controllers"),
+              h("p", { className: "pdesc" },
+                "Same hardware, same weather. The gap between rule-based and the optimiser "
+                + "is what the optimisation itself contributes."),
+              h(KpiTable, { k: run.kpis }))),
+
+          advice && h("section", { className: "panel" },
+            h("h2", null, "Farmer's advice"),
+            h("p", { className: "pdesc" },
+              "Each candidate start hour is a full re-simulation. The message is re-worded by a "
+              + "language model, but every number is checked against the optimiser's output."),
+            h(AdviceResult, { d: advice })),
+
+          !run && !size && !advice && busy === null && h("section", { className: "panel" },
+            h("h2", null, "Nothing run yet"),
+            h("p", { className: "pdesc" },
+              "Press “Decide the size for me” to have the model choose the hardware, or "
+              + "“Run the optimiser” to test the hardware currently set on the left. "
+              + "A 30-day run takes a few seconds; sizing takes longer because it simulates "
+              + "every candidate."))))));
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+})();
+</script>

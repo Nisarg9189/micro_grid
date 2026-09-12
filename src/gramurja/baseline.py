@@ -21,7 +21,9 @@ from .config import (
     DEFAULT_CONFIG,
     PUMPSET,
     VILLAGE_FEEDER,
+    DieselUnit,
     FarmConfig,
+    Feeder,
 )
 from .farm import build_microgrid
 from .kpi import KPIs, combine_kpis, compute_kpis
@@ -34,7 +36,13 @@ def run_rule_based(microgrid: Microgrid, max_steps: int | None = None) -> pd.Dat
     return controller.microgrid.get_log(drop_singleton_key=True)
 
 
-def run_status_quo(profiles: Profiles, config: FarmConfig = DEFAULT_CONFIG) -> KPIs:
+def run_status_quo(
+    profiles: Profiles,
+    config: FarmConfig = DEFAULT_CONFIG,
+    agricultural: Feeder = AGRICULTURAL_FEEDER,
+    village: Feeder = VILLAGE_FEEDER,
+    pumpset: DieselUnit = PUMPSET,
+) -> KPIs:
     """Today's setup, simulated as the two separate systems it physically is.
 
     Irrigation sits on the rationed agricultural feeder with a diesel pumpset behind it.
@@ -51,12 +59,12 @@ def run_status_quo(profiles: Profiles, config: FarmConfig = DEFAULT_CONFIG) -> K
                 with_solar=False,
                 with_wind=False,
                 with_battery=False,
-                diesel_unit=PUMPSET,
-                feeders=(AGRICULTURAL_FEEDER,),
+                diesel_unit=pumpset,
+                feeders=(agricultural,),
             )
         ),
         config,
-        diesel_unit=PUMPSET,
+        diesel_unit=pumpset,
     )
 
     domestic_kpis = compute_kpis(
@@ -68,7 +76,7 @@ def run_status_quo(profiles: Profiles, config: FarmConfig = DEFAULT_CONFIG) -> K
                 with_wind=False,
                 with_battery=False,
                 with_genset=False,
-                feeders=(VILLAGE_FEEDER,),
+                feeders=(village,),
             )
         ),
         config,
@@ -77,13 +85,19 @@ def run_status_quo(profiles: Profiles, config: FarmConfig = DEFAULT_CONFIG) -> K
     return combine_kpis(irrigation_kpis, domestic_kpis)
 
 
-def run_smart_rules(profiles: Profiles, config: FarmConfig = DEFAULT_CONFIG) -> KPIs:
+def run_smart_rules(
+    profiles: Profiles,
+    config: FarmConfig = DEFAULT_CONFIG,
+    feeders: tuple[Feeder, ...] = (AGRICULTURAL_FEEDER, VILLAGE_FEEDER),
+    diesel_unit: DieselUnit = BACKUP_GENSET,
+) -> KPIs:
     microgrid = build_microgrid(
         profiles,
         config,
         with_solar=config.solar_capacity_kwp > 0,
         with_wind=config.wind_capacity_kw > 0,
         with_battery=config.battery_capacity_kwh > 0,
-        diesel_unit=BACKUP_GENSET,
+        diesel_unit=diesel_unit,
+        feeders=feeders,
     )
-    return compute_kpis(run_rule_based(microgrid), config, diesel_unit=BACKUP_GENSET)
+    return compute_kpis(run_rule_based(microgrid), config, diesel_unit=diesel_unit)
