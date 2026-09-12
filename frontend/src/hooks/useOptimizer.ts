@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import type { OptimizationState } from "../types/dashboard";
-import { defaultRecommendation } from "../data/dashboardData";
 import { useSimulationContext } from "./SimulationContext";
 
 export function useOptimizer() {
@@ -20,22 +19,14 @@ export function useOptimizer() {
     return "READY";
   }, [isLoading, error, simData]);
 
-  const metrics = useMemo(() => {
-    if (simData) {
-      return {
-        lpSolverTime: "0.2s", // Backend doesn't give solver time, hardcode reasonable value or skip
-        constraintsEvaluated: 12450, // Mock for visual impact if needed, or remove
-        horizon: `${simData.meta.days} days`,
-        lastRunTime: lastUpdated || "Unknown"
-      };
-    }
-    return {
-      lpSolverTime: "-",
-      constraintsEvaluated: 0,
-      horizon: "-",
-      lastRunTime: "-"
-    };
-  }, [simData, lastUpdated]);
+  // Only fields the backend actually reports. It does not return solver time or a
+  // constraint count, so those are left out entirely rather than filled with a
+  // plausible-looking placeholder -- a number that looks like solver output but isn't
+  // is exactly the failure mode this project's backend has been built to avoid.
+  const metrics = useMemo(() => ({
+    horizon: simData ? `${simData.meta.days} days` : "-",
+    lastRunTime: lastUpdated || "-",
+  }), [simData, lastUpdated]);
 
   const execute = useCallback(async () => {
     await executeSimulation();
@@ -45,7 +36,6 @@ export function useOptimizer() {
     state,
     currentStep,
     lastOptimized: lastUpdated || "Never",
-    recommendation: defaultRecommendation, // We might remove this or adapt it if there's real recommendation data
     metrics,
     errorMessage: error,
     execute,

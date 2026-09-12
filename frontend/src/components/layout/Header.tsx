@@ -1,21 +1,16 @@
 import { Link } from "react-router-dom";
-import { Zap, BrainCircuit, Activity, CloudOff } from "lucide-react";
+import { Zap, BrainCircuit, CloudOff } from "lucide-react";
 import type { OperatingMode } from "../../types/dashboard";
 import { useSimulationContext } from "../../hooks/SimulationContext";
 
 export interface HeaderProps {
   mode: OperatingMode;
   onModeChange: (newMode: OperatingMode) => void;
-  frequency?: string;
-  powerFactor?: string;
-  isOnline?: boolean;
 }
 
 export function Header({
   mode,
   onModeChange,
-  frequency = "50.02 Hz",
-  powerFactor = "0.98",
 }: HeaderProps) {
   const { source, lastUpdated } = useSimulationContext();
   return (
@@ -47,10 +42,9 @@ export function Header({
         <span className="text-[#EA580C]">Dashboard</span>
         <a href="#energy-flow" className="text-slate-500 hover:text-slate-900 transition-colors">Energy Flow</a>
         <a href="#telemetry" className="text-slate-500 hover:text-slate-900 transition-colors">Telemetry</a>
-        <a href="#infrastructure" className="text-slate-500 hover:text-slate-900 transition-colors">Infrastructure</a>
         <a href="#agriculture" className="text-slate-500 hover:text-slate-900 transition-colors">Agriculture</a>
         <Link
-          to="/prediction"
+          to="/"
           className="flex items-center gap-1.5 text-slate-500 hover:text-[#EA580C] transition-colors"
         >
           <BrainCircuit className="h-3.5 w-3.5" />
@@ -60,18 +54,9 @@ export function Header({
 
       {/* Right Actions & Status */}
       <div className="flex items-center gap-3">
-        {/* Real-time Frequency & Power Factor (hidden on small mobile) */}
-        <div className="hidden md:flex items-center gap-3 border-r border-slate-200 pr-3 font-mono text-[11px] text-slate-500">
-          <span className="flex items-center gap-1">
-            <Activity className="h-3.5 w-3.5 text-blue-500" />
-            <span className="font-bold text-slate-800">{frequency}</span>
-          </span>
-          <span>PF <span className="font-bold text-slate-800">{powerFactor}</span></span>
-        </div>
-
         {/* Prediction Page Button */}
         <Link
-          to="/prediction"
+          to="/"
           className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-gradient-to-r from-[#EA580C] to-[#F7931A] px-3.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:scale-[1.03] hover:shadow-[0_4px_12px_rgba(234,88,12,0.25)]"
         >
           <BrainCircuit className="h-3.5 w-3.5" />

@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from .advice import daily_briefing, recommend_irrigation_window
+from .advisory import build_advisory
 from .baseline import run_smart_rules, run_status_quo
 from .config import DEFAULT_CONFIG, DieselUnit, Economics, Feeder
 from .forecast import build_forecast, forecast_weather
@@ -262,25 +262,34 @@ def size(p: Params):
 
 @app.post("/api/advice")
 def advice(p: Params):
-    """Rank pump start hours, then optionally re-word the result for a farmer."""
+    """Rank pump start hours, decide what else is worth telling the farmer today, then
+    optionally re-word the result."""
     config, _, profiles = _setup(p)
     feeders = _feeders(p)
     genset = DieselUnit(max_kw=p.genset_kw, litres_per_kwh=0.30)
     day = min(p.advice_day, max(0, p.days - 2))
 
-    result = recommend_irrigation_window(profiles, day=day, config=config,
-                                         feeders=feeders, diesel_unit=genset)
-    briefing = daily_briefing(profiles, result, config)
+    result = build_advisory(profiles, day=day, config=config, feeders=feeders,
+                            diesel_unit=genset)
+    irrigation = result.irrigation
+    briefing = result.lines
 
     payload = {
         "day": day,
-        "best_start": result.best.start_hour,
-        "hours_needed": result.hours_needed,
-        "cost_saved_inr": round(result.cost_saved_inr, 0),
-        "diesel_saved_litres": round(result.diesel_saved_litres, 2),
+        "best_start": irrigation.best.start_hour,
+        "hours_needed": irrigation.hours_needed,
+        "cost_saved_inr": round(irrigation.cost_saved_inr, 0),
+        "diesel_saved_litres": round(irrigation.diesel_saved_litres, 2),
         "options": [{"start_hour": o.start_hour, "cost_inr": round(o.cost_inr, 1),
-                     "diesel_litres": round(o.diesel_litres, 2)} for o in result.options],
+                     "diesel_litres": round(o.diesel_litres, 2)} for o in irrigation.options],
         "briefing": briefing,
+        # What the selection layer considered but decided not to show, so the console can
+        # display that judgement rather than just its outcome -- the same audit-trail
+        # principle the (removed) dispatch agent's decision trail followed.
+        "advisory": {
+            "shown": [item.kind for item in result.items],
+            "dropped": [item.kind for item in result.dropped],
+        },
     }
 
     if p.language.lower() != "english":

@@ -149,7 +149,7 @@ export default function PredictionForecastingSlide() {
                     </div>
                     <div className="flex flex-col items-end gap-3">
                         <Link
-                            to="/"
+                            to="/dashboard"
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-all hover:border-[#EA580C] hover:bg-orange-50 hover:text-[#EA580C]"
                         >
                             <ArrowLeft className="h-4 w-4" />

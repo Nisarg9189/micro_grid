@@ -11,8 +11,6 @@ export function AppShell({
   children,
   mode,
   onModeChange,
-  frequency,
-  powerFactor,
 }: AppShellProps) {
   return (
     <div className="relative min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-[#F7931A] selection:text-white">
@@ -31,12 +29,7 @@ export function AppShell({
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl space-y-8 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
-        <Header
-          mode={mode}
-          onModeChange={onModeChange}
-          frequency={frequency}
-          powerFactor={powerFactor}
-        />
+        <Header mode={mode} onModeChange={onModeChange} />
 
         <main className="space-y-8">
           {children}

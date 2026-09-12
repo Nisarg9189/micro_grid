@@ -368,10 +368,20 @@
             h("td", { className: "n" }, "₹" + fmt(c.total_inr)))))));
   }
 
+  const ADVISORY_LABEL = {
+    irrigation_reasoning: "irrigation timing", feeder_shift: "feeder schedule change",
+    diesel_need: "diesel needed today", battery_critical: "battery not recovering",
+    battery_reserve: "battery partially recovering"
+  };
+
   function AdviceResult({ d }) {
+    const dropped = d.advisory && d.advisory.dropped.length > 0;
     return h(Fragment, null,
       h("div", { className: "brief" },
         h("ul", null, d.briefing.map((b, i) => h("li", { key: i }, b)))),
+      dropped && h("p", { className: "pdesc", style: { marginTop: 4 } },
+        "Also considered but left out of today's message (below the cap): "
+        + d.advisory.dropped.map((k) => ADVISORY_LABEL[k] || k).join(", ") + "."),
       d.message && h(Fragment, null,
         h("p", { className: "msg" }, d.message),
         h("p", { className: d.numbers_verified ? "ok" : "bad" },

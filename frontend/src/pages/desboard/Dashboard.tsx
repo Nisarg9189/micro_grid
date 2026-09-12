@@ -1,32 +1,19 @@
 import { AppShell } from "../../components/layout/AppShell";
 import { HeroSection } from "../../components/dashboard/HeroSection";
+import { ConfigPanel } from "../../components/dashboard/ConfigPanel";
 import { KPIGrid } from "../../components/dashboard/KPIGrid";
 import { EnergyFlow } from "../../components/dashboard/EnergyFlow";
 import { AIOptimizer } from "../../components/dashboard/AIOptimizer";
 import { EnergyTelemetry } from "../../components/dashboard/EnergyTelemetry";
-import { InfrastructureStatus } from "../../components/dashboard/InfrastructureStatus";
 import { AgriculturePanel } from "../../components/dashboard/AgriculturePanel";
 import { CommunityImpact } from "../../components/dashboard/CommunityImpact";
-import { SystemHealth } from "../../components/dashboard/SystemHealth";
 
 import { useDashboard } from "../../hooks/useDashboard";
 import { useEnergyData } from "../../hooks/useEnergyData";
 import { useOptimizer } from "../../hooks/useOptimizer";
 
 export default function Dashboard() {
-  const {
-    mode,
-    setMode,
-    generatorRunning,
-    isGeneratorPending,
-    toggleGenerator,
-    isCalibrating,
-    calibrationFeedback,
-    calibrate,
-    infrastructure,
-    health,
-    kpis,
-  } = useDashboard();
+  const { mode, setMode, kpis } = useDashboard();
 
   const {
     timeRange,
@@ -40,7 +27,6 @@ export default function Dashboard() {
     state: optState,
     currentStep: optStep,
     lastOptimized,
-    recommendation,
     metrics: optMetrics,
     errorMessage: optError,
     execute: handleRunOptimization,
@@ -54,13 +40,16 @@ export default function Dashboard() {
         isOptimizing={optState === "optimizing"}
       />
 
-      {/* 2. KPI Summary Grid */}
+      {/* 2. Configuration -- site, hardware, load and prices, wired to every result below */}
+      <ConfigPanel />
+
+      {/* 3. KPI Summary Grid */}
       <KPIGrid kpis={kpis} />
 
-      {/* 3. Live Energy Flow Diagram */}
+      {/* 4. Live Energy Flow Diagram */}
       <EnergyFlow />
 
-      {/* 4. Split Section: Telemetry & AI Optimizer */}
+      {/* 5. Split Section: Telemetry & AI Optimizer */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-8 items-start">
         <EnergyTelemetry
           data={energyData}
@@ -73,32 +62,24 @@ export default function Dashboard() {
           state={optState}
           currentStep={optStep}
           lastOptimized={lastOptimized}
-          recommendation={recommendation}
           metrics={optMetrics}
           errorMessage={optError}
           onExecute={handleRunOptimization}
         />
       </div>
 
-      {/* 5. Infrastructure Asset Monitoring */}
-      <InfrastructureStatus
-        items={infrastructure}
-        generatorRunning={generatorRunning}
-        isGeneratorPending={isGeneratorPending}
-        onToggleGenerator={toggleGenerator}
-        isCalibrating={isCalibrating}
-        calibrationFeedback={calibrationFeedback}
-        onCalibrate={calibrate}
-      />
+      {/* Infrastructure and diagnostic-health panels were removed here: they had no
+          real backend to read from (no live SCADA/telemetry exists in this project),
+          rendered fixed numbers regardless of the props they were given, and included
+          a generator start/stop control and a sensor-calibration button that operated
+          on nothing real. A fake control that always reports success is worse than no
+          control. See docs/phase2-audit.md, which already flagged this. */}
 
-      {/* 6. Smart Agriculture & Solar Irrigation */}
+      {/* 6. Smart Agriculture & Solar Irrigation -- genuinely wired to /api/advice */}
       <AgriculturePanel />
 
       {/* 7. Community Social & Environmental Impact */}
       <CommunityImpact />
-
-      {/* 8. Diagnostic System Health Strip */}
-      <SystemHealth items={health} />
     </AppShell>
   );
 }

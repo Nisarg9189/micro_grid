@@ -1,38 +1,32 @@
 import { useState, useCallback, useMemo } from "react";
 import type { OperatingMode, KPI } from "../types/dashboard";
-import { dashboardKPIs, initialInfrastructure, systemHealthList } from "../data/dashboardData";
+import { dashboardKPIs } from "../data/dashboardData";
 import { useSimulationContext } from "./SimulationContext";
 import { Activity, Droplets, ShieldCheck, Leaf } from "lucide-react";
 
-// For generator and calibration simulations
-const toggleGenerator = async (target: boolean) => {
-  await new Promise((r) => setTimeout(r, 800));
-  return { running: target };
-};
-const calibrateSensors = async () => {
-  await new Promise((r) => setTimeout(r, 1400));
-  return { message: "Pyranometer sensors calibrated (Zero offset normalized)" };
-};
-
 export function useDashboard() {
   const [mode, setMode] = useState<OperatingMode>("auto");
-  const [generatorRunning, setGeneratorRunning] = useState(false);
-  const [isGeneratorPending, setIsGeneratorPending] = useState(false);
-  const [isCalibrating, setIsCalibrating] = useState(false);
-  const [calibrationFeedback, setCalibrationFeedback] = useState<string | null>(null);
 
   const { data: simData, source } = useSimulationContext();
 
   const kpis = useMemo<KPI[]>(() => {
     if (simData && source === "simulation") {
       const opt = simData.kpis.optimiser;
+      const days = simData.meta.days;
+      // The backend is explicit that this is a `days`-long horizon, not an annual
+      // total (see meta.caveat) -- a 7-day cost labelled "/ year" would be a real
+      // number shown at the wrong scale, which reads as a much larger saving than
+      // the simulation actually found. Label the true horizon instead of assuming.
+      const period = days === 365 ? "/ year" : `/ ${days}d`;
       return [
         {
-          title: "Annual Energy Cost",
+          title: days === 365 ? "Annual Energy Cost" : "Energy Cost",
           value: `₹${opt.cost_inr.toLocaleString()}`,
-          unit: "/ year",
+          unit: period,
           change: "OPTIMIZED",
-          description: "Calculated via LP Dispatch",
+          description: days === 365
+            ? "Calculated via LP Dispatch"
+            : `${days}-day horizon, not an annual figure`,
           trend: "down",
           tone: "orange",
           icon: Activity,
@@ -40,7 +34,7 @@ export function useDashboard() {
         {
           title: "Diesel Consumption",
           value: opt.diesel_litres.toLocaleString(),
-          unit: "L / year",
+          unit: `L ${period}`,
           change: "OPTIMIZED",
           description: "Reduced via solar/battery",
           trend: "down",
@@ -69,46 +63,16 @@ export function useDashboard() {
         }
       ];
     }
-    return dashboardKPIs; // Fallback
+    return dashboardKPIs; // Fallback shown only until the real simulation resolves.
   }, [simData, source]);
 
   const handleModeChange = useCallback((newMode: OperatingMode) => {
     setMode(newMode);
   }, []);
 
-  const handleGeneratorToggle = useCallback(async (targetState: boolean) => {
-    setIsGeneratorPending(true);
-    try {
-      const res = await toggleGenerator(targetState);
-      setGeneratorRunning(res.running);
-    } finally {
-      setIsGeneratorPending(false);
-    }
-  }, []);
-
-  const handleCalibrate = useCallback(async () => {
-    setIsCalibrating(true);
-    setCalibrationFeedback(null);
-    try {
-      const res = await calibrateSensors();
-      setCalibrationFeedback(res.message);
-      setTimeout(() => setCalibrationFeedback(null), 4000);
-    } finally {
-      setIsCalibrating(false);
-    }
-  }, []);
-
   return {
     mode,
     setMode: handleModeChange,
-    generatorRunning,
-    isGeneratorPending,
-    toggleGenerator: handleGeneratorToggle,
-    isCalibrating,
-    calibrationFeedback,
-    calibrate: handleCalibrate,
-    infrastructure: initialInfrastructure, // Real physical backend has no infrastructure telemetry
-    health: systemHealthList, // Simulated health status
     kpis,
     source,
   };

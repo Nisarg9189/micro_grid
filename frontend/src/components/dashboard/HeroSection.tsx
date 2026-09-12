@@ -1,12 +1,41 @@
 import { Cpu, ArrowRight, BrainCircuit, Sun, Battery, Activity } from "lucide-react";
 import { dashboardImages } from "../../data/dashboardData";
+import { useSimulationContext } from "../../hooks/SimulationContext";
+import { peakLoadIndex } from "../../utils/horizon";
 
 export interface HeroSectionProps {
   onRunOptimization: () => void;
   isOptimizing?: boolean;
 }
 
+// One decimal place, or an em dash while no simulation has resolved -- a fabricated
+// "0.0 kW" reads as a real reading of nothing, which is a different claim from "no data".
+function fmt(value: number | null, digits = 1): string {
+  return value == null ? "—" : value.toFixed(digits);
+}
+
 export function HeroSection({ onRunOptimization, isOptimizing = false }: HeroSectionProps) {
+  const { data: simData, source } = useSimulationContext();
+  const hasData = source === "simulation" && simData != null;
+
+  const series = simData?.series ?? null;
+  // The peak-demand hour, not the last hour of the horizon -- the last hour is often
+  // the middle of the night, where solar reads 0 and nothing looks like it's happening.
+  // The full breakdown for this hour (solar/battery/grid/load/diesel) lives in the
+  // Energy Flow section below; this card only needs the two headline figures.
+  const peak = series ? peakLoadIndex(series.load_kw) : -1;
+  const at = (arr?: number[]) => (arr && peak >= 0 ? arr[peak] : null);
+
+  const solarKw = at(series?.solar_kw);
+  const socPct = at(series?.soc) != null ? at(series?.soc)! * 100 : null;
+  const reliabilityPct = hasData ? simData!.kpis.optimiser.reliability_pct : null;
+
+  const highlights: [string, string, typeof Sun, string][] = [
+    [hasData ? `${fmt(solarKw)} kW` : "—", "Solar Output", Sun, "text-[#EA580C]"],
+    [hasData ? `${fmt(socPct, 0)}%` : "—", "Battery SOC", Battery, "text-green-600"],
+    [hasData ? `${fmt(reliabilityPct, 1)}%` : "—", "Reliability", Activity, "text-blue-600"],
+  ];
+
   const scrollToFlow = () => {
     document.getElementById("energy-flow")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -51,28 +80,26 @@ export function HeroSection({ onRunOptimization, isOptimizing = false }: HeroSec
           </button>
         </div>
 
-        {/* Mini Highlights Grid */}
+        {/* Mini Highlights Grid -- solar/SOC are the peak-demand hour of the horizon,
+            reliability is the whole-horizon result; none of this is a live sensor feed.
+            The full hour-by-hour breakdown lives in the Energy Flow section below, so
+            this stays three numbers rather than repeating that section here too. */}
         <div className="mt-9 grid max-w-lg grid-cols-3 gap-3">
-          {[
-            ["3.0 kW", "Solar Output", Sun, "text-[#EA580C]"],
-            ["84%", "Battery SOC", Battery, "text-green-600"],
-            ["100%", "Reliability", Activity, "text-blue-600"],
-          ].map(([val, label, Icon, colorClass]) => (
-            <div key={label as string} className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          {highlights.map(([val, label, Icon, colorClass]) => (
+            <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
               <div className="flex items-center gap-1.5">
-                {/* @ts-ignore */}
                 <Icon className={`h-3.5 w-3.5 ${colorClass}`} />
-                <span className="font-mono text-base font-bold text-slate-950">{val as string}</span>
+                <span className="font-mono text-base font-bold text-slate-950">{val}</span>
               </div>
               <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-slate-400">
-                {label as string}
+                {label}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Right Rural Image + Glass Telemetry Overlay */}
+      {/* Right Rural Image */}
       <div className="relative min-h-[360px] overflow-hidden lg:min-h-[520px]">
         <img
           src={dashboardImages.hero}
@@ -81,36 +108,6 @@ export function HeroSection({ onRunOptimization, isOptimizing = false }: HeroSec
           loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent lg:bg-gradient-to-r lg:from-slate-950/30 lg:to-transparent" />
-
-        {/* Floating Glass Telemetry Card */}
-        <div className="absolute right-5 top-5 rounded-2xl border border-white/40 bg-white/85 p-4 shadow-2xl backdrop-blur-xl sm:right-7 sm:top-7">
-          <div className="mb-2 flex items-center justify-between gap-4 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">
-            <span>Live Telemetry</span>
-            <span className="rounded bg-green-100 px-1.5 py-0.5 text-green-700">Online</span>
-          </div>
-          <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-900">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-            DISPATCH // OPTIMAL
-          </div>
-          <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-3 font-mono text-[11px]">
-            <div className="flex justify-between gap-8">
-              <span className="text-slate-500">Solar PV</span>
-              <span className="font-bold text-[#EA580C]">3.0 kW</span>
-            </div>
-            <div className="flex justify-between gap-8">
-              <span className="text-slate-500">LFP Battery</span>
-              <span className="font-bold text-green-600">84% SOC</span>
-            </div>
-            <div className="flex justify-between gap-8">
-              <span className="text-slate-500">Grid Feed</span>
-              <span className="font-bold text-blue-600">3.8 kW (Sync)</span>
-            </div>
-            <div className="flex justify-between gap-8">
-              <span className="text-slate-500">Village Load</span>
-              <span className="font-bold text-slate-900">5.8 kW</span>
-            </div>
-          </div>
-        </div>
 
         {/* Bottom Banner */}
         <div className="absolute bottom-5 left-5 rounded-2xl border border-white/30 bg-slate-950/80 px-4 py-3 text-white shadow-xl backdrop-blur-md sm:bottom-7 sm:left-7">

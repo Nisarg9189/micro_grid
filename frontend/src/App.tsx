@@ -8,8 +8,12 @@ function App() {
     <SimulationProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/prediction" element={<Prediction />} />
+          {/* Prediction is the only page wired to the real optimiser end to end, so it
+              is what an evaluator should land on. Dashboard stays reachable at its own
+              route -- it is genuinely live where it uses SimulationContext (KPIs, energy
+              telemetry, irrigation advice), but is not the primary evaluation surface. */}
+          <Route path="/" element={<Prediction />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </BrowserRouter>
     </SimulationProvider>

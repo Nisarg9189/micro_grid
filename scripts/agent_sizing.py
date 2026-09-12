@@ -62,6 +62,13 @@ def main() -> None:
 
     print(f"\nBOUNDED SEARCH vs EXHAUSTIVE SWEEP -- {days} days, {controller.upper()}")
     print("=" * 76)
+    if days < 365:
+        print("  WARNING: a short horizon distorts sizing and flatters this comparison.")
+        print("  Capital is annualised while energy cost covers only the horizon, so")
+        print("  hardware looks far too expensive and 'install nothing' tends to win. A")
+        print("  zero-capital winner makes the bound prune almost everything at once, which")
+        print("  reports a pruning rate the full year will not reproduce. Use 365 for any")
+        print("  number worth quoting.\n")
     print(f"  lattice          {len(grid)} configurations "
           f"({len(SOLAR_OPTIONS)} solar x {len(WIND_OPTIONS)} wind x "
           f"{len(BATTERY_OPTIONS)} battery)")

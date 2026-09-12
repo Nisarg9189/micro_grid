@@ -67,7 +67,7 @@ class IrrigationAdvice:
         return self.worst.diesel_litres - self.best.diesel_litres
 
 
-def _slice_profiles(profiles: Profiles, start: int, stop: int) -> Profiles:
+def slice_profiles(profiles: Profiles, start: int, stop: int) -> Profiles:
     return Profiles(
         solar_kw=profiles.solar_kw[start:stop],
         wind_kw=profiles.wind_kw[start:stop],
@@ -80,7 +80,7 @@ def _slice_profiles(profiles: Profiles, start: int, stop: int) -> Profiles:
     )
 
 
-def _with_pump_at(
+def with_pump_at(
     profiles: Profiles,
     day_offset: int,
     start_hour: int,
@@ -117,11 +117,11 @@ def recommend_irrigation_window(
     """
     start = day * HOURS_PER_DAY
     stop = start + horizon_days * HOURS_PER_DAY
-    window = _slice_profiles(profiles, start, stop)
+    window = slice_profiles(profiles, start, stop)
 
     options = []
     for start_hour in range(earliest_hour, latest_hour - hours_needed + 1):
-        candidate = _with_pump_at(window, 0, start_hour, hours_needed, config.pump_kw)
+        candidate = with_pump_at(window, 0, start_hour, hours_needed, config.pump_kw)
         log = run_mpc(
             candidate,
             config,
@@ -142,7 +142,7 @@ def recommend_irrigation_window(
     return IrrigationAdvice(day=day, hours_needed=hours_needed, options=options)
 
 
-def _scheduled_feeder_blocks(profiles: Profiles, day: int) -> list[tuple[int, int]]:
+def scheduled_feeder_blocks(profiles: Profiles, day: int) -> list[tuple[int, int]]:
     """Hours the agricultural feeder is rostered on, as contiguous blocks.
 
     A block beginning at 22:00 runs past midnight, so within a single day it shows up as
@@ -194,7 +194,7 @@ def daily_briefing(
     else:
         lines.append("Timing makes little difference today - any window costs about the same.")
 
-    blocks = _scheduled_feeder_blocks(profiles, advice.day)
+    blocks = scheduled_feeder_blocks(profiles, advice.day)
     if blocks:
         spans = " and ".join(f"{a:02d}:00-{b:02d}:00" for a, b in blocks)
         lines.append(

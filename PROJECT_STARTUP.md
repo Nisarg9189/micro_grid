@@ -111,6 +111,7 @@ loses, check that first -- it is more likely a pricing mismatch than a real find
 | `scripts/simulate.py` | ~40 s | Any site, hardware and tariff you pass. Start here. |
 | `scripts/run_baseline.py` | ~40 s | The headline case: status quo, rule-based, optimiser |
 | `scripts/optimize_sizing.py [mpc\|rbc]` | ~25 min | Derives the hardware from the load profile |
+| `scripts/agent_sizing.py [days] [mpc\|rbc]` | ~40 min | Bounded search vs the exhaustive sweep |
 | `scripts/validate_forecast.py` | ~30 s | Synthesised forecast vs genuine archived forecasts |
 | `scripts/village_microgrid.py` | ~25 min | The whole village, with feeder routing enforced |
 | `scripts/village_scenario.py` | ~10 min | Coastal village where wind competes |
@@ -219,6 +220,7 @@ src/gramurja/
   village.py    community load model with pump diversity
   sharing.py    per-participant cluster model and the village line
   sizing.py     capital costing and the parallel configuration sweep
+  search.py     the same sizing answer with fewer simulations, by a provable bound
   kpi.py        diesel, cost, CO2 and reliability from a run log
   api.py        FastAPI endpoints behind the console
 scripts/
@@ -226,6 +228,7 @@ scripts/
   serve.py              the interactive console at 127.0.0.1:8000
   run_baseline.py       the headline case, three controllers
   optimize_sizing.py    derive hardware for the Banaskantha farm
+  agent_sizing.py       bounded search against the exhaustive sweep
   village_scenario.py   the coastal village case, where wind competes
   village_microgrid.py  a whole Banaskantha village, not one farm
   energy_sharing.py     what a village line between neighbours is worth
@@ -487,10 +490,31 @@ and live console, and community energy sharing.
 Under realistic forecasts the optimiser retains 88% of its perfect-foresight advantage over
 rule-based control, and forecast error costs about 5% of total energy cost.
 
-What is not built: autonomous agent orchestration, where an agent decides for itself when to
-re-plan rather than being asked. The pieces it would need already exist -- the optimiser is
-a single call, the run log records every flow, and the advice layer turns set-points into
-sentences -- so it is a wrapper over a finished interface rather than a rewrite.
+**Three agents have since been built on top of that core, each measured rather than
+assumed to be worth it:**
+
+- **A dispatch agent** that decided for itself when a re-plan was worth the solve, instead
+  of re-solving every hour. Built, benchmarked over 30 days, and removed: skipping 39% of
+  solves cost 11.8% more diesel and 6.2% more money for zero solver-time saved on hardware
+  this cheap to run. The finding is kept in section 14 of `README.md`; the code is not,
+  because a negative result does not need to keep running.
+- **A bounded sizing search** (`src/gramurja/search.py`) that replaces the exhaustive
+  sizing sweep with branch-and-bound over an exact bound (installed capital alone lower-
+  bounds total cost, so a candidate already costlier than the best system found cannot
+  win and never needs simulating). At farm scale: the identical recommendation as the
+  120-configuration sweep, using 54% fewer simulations and 62% less wall clock. Village-
+  scale benchmarking is in progress.
+- **An advisory agent** (`src/gramurja/advisory.py`) that decides which of several signals
+  -- irrigation timing, a feeder roster change, diesel need, battery recovery -- are worth
+  a farmer's attention today, capped to a short message. Forcing signals (a roster shift,
+  a battery that will not recover overnight) are never dropped by the cap; discretionary
+  ones are ranked by measured consequence and fill what room is left. Wired into
+  `/api/advice` and the console.
+
+What is not built: an agent that decides on its own when to re-fetch weather or escalate an
+anomaly to an operator, rather than being asked. Given what the dispatch-agent experiment
+found -- an agent adds nothing where the thing underneath it is already optimal and cheap
+to call -- this is worth building only where an equivalent argument does not already apply.
 
 ## Emissions
 

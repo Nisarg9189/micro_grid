@@ -1,16 +1,13 @@
 import { Cpu, Sparkles, AlertCircle, CheckCircle2, RotateCw } from "lucide-react";
 import { Card } from "../ui/Card";
 import { StatusPill } from "../ui/StatusPill";
-import type { OptimizationState, AIRecommendation } from "../../types/dashboard";
+import type { OptimizationState } from "../../types/dashboard";
 
 export interface AIOptimizerProps {
   state: OptimizationState;
   currentStep?: string;
   lastOptimized?: string;
-  recommendation: AIRecommendation;
   metrics: {
-    lpSolverTime: string;
-    constraintsEvaluated: number | string;
     horizon: string;
     lastRunTime: string;
   };
@@ -59,19 +56,11 @@ export function AIOptimizer({
           </StatusPill>
         </div>
 
-        {/* LP Metrics Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {/* LP Metrics -- only what the backend actually reports */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
             <div className="font-mono text-[10px] uppercase text-slate-400 mb-1">Horizon</div>
             <div className="font-mono font-bold text-slate-800 text-sm">{metrics.horizon}</div>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-            <div className="font-mono text-[10px] uppercase text-slate-400 mb-1">Solver Time</div>
-            <div className="font-mono font-bold text-slate-800 text-sm">{metrics.lpSolverTime}</div>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-            <div className="font-mono text-[10px] uppercase text-slate-400 mb-1">Constraints</div>
-            <div className="font-mono font-bold text-slate-800 text-sm">{metrics.constraintsEvaluated.toLocaleString()}</div>
           </div>
           <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
             <div className="font-mono text-[10px] uppercase text-slate-400 mb-1">Last Run</div>

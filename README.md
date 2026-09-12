@@ -1045,6 +1045,40 @@ advice — calling the optimiser as a tool. A deliberate architectural commitmen
 battery limit or strand a critical load, and nothing in a language model would catch it.
 Agents orchestrate; the solver decides.
 
+#### We built the monitoring agent, measured it, and removed it
+
+Worth recording because the measurement is the useful part. A monitor–decide–act loop was
+written around the optimiser: each hour it compared actual conditions against the plan it
+was holding and re-planned only when the difference mattered — load above forecast,
+generation short, a feeder changing state, a discharge the battery could no longer deliver.
+Every set-point still came from the LP; the agent only chose *when* to call it.
+
+Over 30 days against always-re-planning MPC, on identical hardware and weather:
+
+| | Optimiser | Agent |
+|---|---|---|
+| LP solves | 720 | **438** (−39%) |
+| Diesel | 16.05 L | **17.94 L (+11.8%)** |
+| Energy cost | ₹5,089 | **₹5,403 (+6.2%)** |
+| Reliability | 100% | 100% |
+
+**A bad trade, and that is the finding.** Solver calls cost about 4 ms on a laptop; diesel
+does not. Two things it settled:
+
+- **Load forecast error sets the ceiling.** 345 of 438 re-plans were triggered by load
+  arriving above forecast. A followed plan supplies exactly the load it was written
+  against, so any under-forecast becomes shed load kWh for kWh — meaning *no* supply-side
+  threshold can be non-zero, and forecast error alone forces a re-plan about half the time.
+  Re-planning hourly is how the controller keeps measuring the present rather than trusting
+  yesterday's guess about it.
+- **An agent adds nothing where the LP is already optimal and re-solving is free.** It can
+  only match the LP, so the error term is one-sided.
+
+The code was removed rather than kept as decoration. The search agent in
+`src/gramurja/search.py` applies the lesson: it operates on sizing, where the current
+method is a brute-force lattice, each evaluation costs minutes rather than milliseconds,
+and the failure mode is a worse recommendation rather than shed load.
+
 ### The honest summary
 
 > Today GramUrja AI is a **forecast-driven optimisation and control system** with

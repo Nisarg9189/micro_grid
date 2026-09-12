@@ -3,9 +3,11 @@ import { Card } from "../ui/Card";
 import { StatusPill } from "../ui/StatusPill";
 import { dashboardImages } from "../../data/dashboardData";
 import { useAdvice } from "../../hooks/useAdvice";
+import { useSimulationContext } from "../../hooks/SimulationContext";
 
 export function AgriculturePanel() {
   const { advice, loading, error, state, getAdvice } = useAdvice();
+  const { params } = useSimulationContext();
 
   return (
     <Card id="agriculture" className="p-6 sm:p-8 overflow-hidden">
@@ -112,8 +114,12 @@ export function AgriculturePanel() {
                 </div>
 
                 <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm text-sm text-slate-700 leading-relaxed">
-                  <strong className="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">AI Briefing</strong>
-                  {advice.briefing}
+                  <strong className="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">AI Briefing</strong>
+                  <ul className="space-y-1.5 list-disc pl-4">
+                    {advice.briefing.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
@@ -176,11 +182,15 @@ export function AgriculturePanel() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
           <div className="absolute bottom-4 left-4 right-4 text-white">
+            {/* Was "Community Farm Microgrid Feed #AG-02" and "Reliable Water for 42
+                Farming Families" -- a fake feed ID and an invented beneficiary count
+                with no backend field behind either. This now states the one thing
+                that actually is configured: the pump rating and site. */}
             <div className="font-mono text-[10px] uppercase tracking-wider text-emerald-300">
-              Community Farm Microgrid Feed #AG-02
+              Irrigation Pump
             </div>
             <div className="mt-1 font-heading text-lg font-bold">
-              Reliable Water for 42 Farming Families
+              {params.pump_kw} kW borewell pump &middot; {params.site}
             </div>
           </div>
         </div>
