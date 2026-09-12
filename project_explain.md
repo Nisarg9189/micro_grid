@@ -38,11 +38,11 @@ not assumed.
 
 **The uncomfortable one, stated upfront:** roughly half the diesel reduction comes from
 replacing an inefficient diesel pumpset with a proper generator — no AI involved. What the
-optimiser adds on top is ₹19,015/year and 186 L of diesel beyond what simple rules achieve on
+optimiser adds on top is ₹18,867/year and 184 L of diesel beyond what simple rules achieve on
 identical hardware.
 
-**Where to go next:** Section 11 for all results · Section 3 for how the optimiser differs
-from rule-based control · Section 10 for what is real data and what is assumed · Section 14
+**Where to go next:** Section 12 for all results · Section 3 for how the optimiser differs
+from rule-based control · Section 11 for what is real data and what is assumed · Section 15
 for limitations.
 
 ---
@@ -142,7 +142,7 @@ turbine power curve (cut-in 3 m/s, rated 12 m/s).
 
 **At Palanpur: mean wind 2.5 m/s, capacity factor 1.2%.** A 3 kW turbine would produce
 327 kWh in a year. Wind is modelled and fully supported, but the recommended system for this
-site contains **0 kW of it**. Section 8 explains where it does get selected.
+site contains **0 kW of it**. Section 9 explains where it does get selected.
 
 ### Farm load
 
@@ -496,7 +496,7 @@ So the search:
 5. Picks the cheapest survivor.
 
 Because each candidate is scored by running the actual controller, **the answer depends on
-which controller runs** — see Section 11.
+which controller runs** — see Section 12.
 
 ### The result (reanalysis weather, realistic forecasts, 120 configurations)
 
@@ -527,7 +527,109 @@ lifts the diesel cut from 83% to 93%**.
 
 ---
 
-## 8. The wind decision
+## 8. The village case
+
+The problem statement asks about **off-grid communities**, and names microgrid operators,
+electrification agencies and NGOs as its users — not individual farmers. So the same engine
+was pointed at a whole village rather than one holding.
+
+### What the village contains
+
+100 households, 20 farms, a dairy chilling centre and the drinking-water supply.
+
+| Load | kWh/year | Share | Character |
+|---|---|---|---|
+| Households | 91,271 | 58.0% | Small individually, evening peak |
+| Irrigation | 44,350 | 28.2% | Large, scheduled, deferrable |
+| Dairy chilling | 16,206 | 10.3% | Twice daily, **hard deadline** |
+| Water supply | 5,446 | 3.5% | Critical but shiftable |
+| **Total** | **157,273** | | Peak 49.9 kW, load factor 36% |
+
+### A village is not one farm multiplied
+
+Two things change, and both matter.
+
+**Diversity.** A hundred households do not switch on together, and twenty pumps do not start
+in the same minute. Each farm in the model has its own fixed start hour, so the aggregate
+pump peak is **29.8 kW against the 74.6 kW they would draw simultaneously — a diversity
+factor of 0.40**. That spread is the whole economic argument for sharing infrastructure, and
+a model that multiplies one farm by twenty throws it away.
+
+**The peak moves to the evening.** On a single farm the dominant load is a pump running in
+daylight, so demand and solar roughly coincide. In a village, households dominate and peak at
+**31 kW at 19:00** when solar is zero, against a **10.9 kW trough at 13:00** when solar is
+strongest. That mismatch is precisely what storage exists to fix.
+
+### The routing constraint
+
+At farm scale, the rule that pumps cannot use the domestic feeder came for free: a 3 kW
+single-phase connection physically cannot start a 3.73 kW pump. A 50 kW village transformer
+can, so at village scale the rule has to be stated explicitly.
+
+It is a real constraint, not a modelling convenience. Agricultural and domestic supplies are
+**separately sanctioned and separately tariffed** — ₹1.50 against ₹5.00 — and running a pump
+off a domestic connection is a different contract, not a clever optimisation. The optimiser
+now carries demand as two groups with a separate energy balance each, and every connection
+declares what it may serve. Grid power may only reach the battery through a connection
+already allowed to serve the domestic side; otherwise storage becomes a laundering route for
+agricultural-tariff power.
+
+**Enforcing it changed the answer completely:**
+
+| | Without routing | **With routing** |
+|---|---|---|
+| Solar | 20 kWp | **40 kWp** |
+| Battery | **0 kWh** | **100 kWh** |
+| Diesel | 2,014 L | **937 L** |
+| CO₂ cut | 33.0% | **47.7%** |
+| Saved per household | ₹19,244 | **₹16,524** |
+
+Storage went from worthless to essential. Once pumps genuinely cannot fall back on the
+domestic feeder, the roughly 69% of hours when the agricultural feeder is down must be
+covered by solar, battery or diesel — and storage is the cheapest way to do it. **Every one
+of the ten cheapest configurations now carries a battery**, the smallest being 25 kWh.
+
+The earlier ₹19,244 per household was inflated because the model was quietly supplying pumps
+from a domestic connection. The honest figure is about 14% lower.
+
+### Result
+
+**Recommended: 40 kWp solar, 0 kW wind, 100 kWh battery**
+
+| Metric | Status quo | Recommended |
+|---|---|---|
+| Diesel | 21,970 L/year | **937 L/year** (−95.7%) |
+| Total cost | ₹2,707,313/year | **₹1,054,954/year** |
+| Reliability | 94.7% | **100%** |
+| Unserved load | 8,306 kWh/year | **0** |
+| CO₂ | 149,246 kg/year | **78,116 kg/year** (−47.7%) |
+
+**Saving: ₹1,652,359/year — ₹16,524 per household.**
+
+The nearest alternatives:
+
+| Solar | Battery | Diesel | Renewable share | Total/year |
+|---|---|---|---|---|
+| **40 kWp** | **100 kWh** | 937 L | 36.8% | **₹1,054,954** |
+| 30 kWp | 50 kWh | 2,680 L | 27.5% | ₹1,063,273 |
+| 40 kWp | 50 kWh | 2,555 L | 33.7% | ₹1,068,275 |
+| 30 kWp | 100 kWh | 1,114 L | 28.0% | ₹1,077,758 |
+| 60 kWp | 100 kWh | 826 L | 48.0% | ₹1,084,170 |
+
+Two consistency checks worth noting. Status-quo diesel works out to **1,098 L per farm**
+against 1,080 L from the independent single-farm run — within 1.7%, from a completely
+different load model. And the village needs 100 kWh of storage where a single farm needed
+5 kWh; with 20 farms that is suggestive rather than rigorous, since the village also carries
+100 households, but the two models landing in the same territory from different directions is
+reassuring.
+
+**Caveat:** every figure in the village load model is an assumption — 2.5 kWh/day per
+household, a 5 kW bulk milk cooler, four hours of water pumping. Structurally realistic for
+Banaskantha, but none of it is metered.
+
+---
+
+## 9. The wind decision
 
 ### Why wind was rejected at Palanpur
 
@@ -573,7 +675,7 @@ work, which is itself an argument for a shared village microgrid.
 
 ---
 
-## 9. Carbon-aware optimisation
+## 10. Carbon-aware optimisation
 
 ### Cost-only versus carbon-aware
 
@@ -630,7 +732,7 @@ through the day. Under a flat intensity assumption, dispatch contributes essenti
 
 ---
 
-## 10. Real data versus modelled assumptions
+## 11. Real data versus modelled assumptions
 
 Being precise about this is the difference between a defensible project and an
 embarrassing one.
@@ -682,7 +784,7 @@ would replace.
 
 ---
 
-## 11. Current results
+## 12. Current results
 
 ### The three controllers
 
@@ -692,18 +794,20 @@ the ₹84,565 total in the next table.
 
 | Metric | Status quo | Rule-based | Optimiser (realistic forecast) |
 |---|---|---|---|
-| Diesel | 1,080 L | 368 L | **182 L** |
-| Energy cost | ₹167,737 | ₹71,869 | **₹52,854** |
+| Diesel | 1,080 L | 368 L | **184 L** |
+| Energy cost | ₹167,737 | ₹71,869 | **₹53,002** |
 | Reliability | 94.1% | 100% | **100%** |
 | Unserved load | 892 kWh | 0 | **0** |
-| CO₂ | 12,166 kg | 8,294 kg | 8,303 kg |
+| CO₂ | 12,166 kg | 8,294 kg | 8,291 kg |
 
-The optimiser removes **186 L of diesel and ₹19,015 a year beyond what rules achieve on
+The optimiser removes **184 L of diesel and ₹18,867 a year beyond what rules achieve on
 identical hardware** — 26% of the remaining bill.
 
-Note it is **8 kg of CO₂ worse than rules** despite burning half the diesel. It displaces
-diesel partly by importing more grid power, and once round-trip losses are counted the two
-emit about the same per kWh delivered. Cost and carbon are not the same objective.
+Now look at the CO₂ column: halving the diesel moves emissions by **4 kg across a whole
+year**, which is nothing. The optimiser displaces diesel largely by importing more grid
+power, and once round-trip losses are counted the two emit about the same per kWh delivered.
+Cost and carbon are not the same objective, and optimising hard for one barely touches the
+other.
 
 ### Total cost of ownership
 
@@ -740,7 +844,7 @@ matters here, and it holds in both.)*
 
 ---
 
-## 12. What makes this "AI"
+## 13. What makes this "AI"
 
 This deserves an honest answer, because the term gets stretched.
 
@@ -786,7 +890,7 @@ Agents orchestrate; the solver decides.
 
 ---
 
-## 13. End-to-end flow
+## 14. End-to-end flow
 
 ```
               Reanalysis weather + forecast error
@@ -825,7 +929,7 @@ The loop runs every hour. Only the first hour of each 24-hour plan is ever execu
 
 ---
 
-## 14. Limitations and honest caveats
+## 15. Limitations and honest caveats
 
 These are stated plainly because an evaluator will find them anyway, and because a project
 that names its own weaknesses is more trustworthy than one that doesn't.
@@ -846,7 +950,7 @@ sizing result. Vendor quotes would change the recommendation.
 
 **Grid carbon intensity is an assumed shape.** The 0.515–0.890 kg/kWh daily curve is a
 plausible model of the Indian grid, not measured dispatch data. The carbon conclusions in
-Section 9 depend on it.
+Section 10 depend on it.
 
 **Feeder behaviour is modelled.** The three-slot rotating roster, the 5% and 7% outage rates,
 the 10 kW and 3 kW caps and both tariffs are assumptions about structure, not the published

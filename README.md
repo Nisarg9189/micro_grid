@@ -33,16 +33,16 @@ recommended system, under three controllers.
 
 | | Status quo | Rule-based | Optimiser |
 | --- | --- | --- | --- |
-| Diesel | 1,080 L | 368 L | 182 L |
-| Energy cost | Rs 167,737 | Rs 71,869 | Rs 52,854 |
+| Diesel | 1,080 L | 368 L | 184 L |
+| Energy cost | Rs 167,737 | Rs 71,869 | Rs 53,002 |
 | Reliability | 94.1% | 100% | 100% |
-| CO2 | 12,166 kg | 8,294 kg | 8,303 kg |
+| CO2 | 12,166 kg | 8,294 kg | 8,291 kg |
 
-The optimiser removes a further 186 L of diesel and Rs 19,015 a year beyond what the rules
-achieve on identical hardware -- 26% of the remaining bill. Note that it is 8 kg of CO2
-*worse* than the rules despite burning half the diesel: it displaces diesel partly by
-importing more grid power, and once battery round-trip losses are counted the two emit
-about the same per kWh delivered. Cost and carbon are not the same objective here.
+The optimiser removes a further 184 L of diesel and Rs 18,867 a year beyond what the rules
+achieve on identical hardware -- 26% of the remaining bill. Note the CO2 column: halving the
+diesel moves emissions by 4 kg in a year, essentially nothing. The optimiser displaces diesel
+largely by importing more grid power, and once battery round-trip losses are counted the two
+emit about the same per kWh delivered. Cost and carbon are not the same objective here.
 
 ## Layout
 
@@ -61,6 +61,7 @@ scripts/
   run_baseline.py       the two reference runs
   optimize_sizing.py    derive hardware for the Banaskantha farm
   village_scenario.py   the coastal village case, where wind competes
+  village_microgrid.py  a whole Banaskantha village, not one farm
   validate_forecast.py  synthesised forecast vs genuine archived forecasts
 report/
   mid-evaluation.html   results write-up
@@ -156,6 +157,65 @@ There wind misses the optimum by 0.75% and enters it below Rs 60,000/kW, and as 
 the optimiser buys more of it and retires solar. The engine follows the resource rather
 than carrying a bias against wind; Banaskantha simply has none. Wind is a community
 technology here, not a farm one.
+
+## A whole village, not one farm
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/village_microgrid.py
+```
+
+The problem statement asks about off-grid *communities*, so the same engine is pointed at a
+Banaskantha village: 100 households, 20 farms, a dairy chilling centre and the drinking-water
+supply -- 157,273 kWh/yr in total.
+
+A village is not one farm multiplied. Two things change. **Diversity**: twenty pumps on their
+own schedules peak at 29.8 kW rather than the 74.6 kW they would draw together, a factor of
+0.40, and that spread is the whole argument for sharing infrastructure. **The peak moves to
+the evening**: households dominate and peak at 31 kW at 19:00 when solar is zero, against a
+10.9 kW trough at 13:00 when solar is strongest.
+
+### Feeder routing has to be explicit here
+
+At farm scale the rule that pumps cannot use the domestic feeder came for free -- a 3 kW
+single-phase connection cannot start a 3.73 kW pump. A 50 kW village transformer can, so the
+rule must be stated: agricultural and domestic supplies are separately sanctioned and
+separately tariffed, and neither may serve the other's load. Feeders now declare what they
+serve, and grid power reaches the battery only through a connection already allowed to supply
+the domestic side -- otherwise storage launders agricultural-tariff power.
+
+Enforcing it changes the answer completely:
+
+| | Without routing | With routing |
+| --- | --- | --- |
+| Solar | 20 kWp | **40 kWp** |
+| Battery | **0 kWh** | **100 kWh** |
+| Diesel | 2,014 L | **937 L** |
+| CO2 cut | 33.0% | **47.7%** |
+| Saved per household | Rs 19,244 | **Rs 16,524** |
+
+Storage goes from worthless to essential, because the ~69% of hours when the agricultural
+feeder is down must then be covered by solar, battery or diesel. Every one of the ten
+cheapest configurations carries a battery. The earlier per-household figure was inflated by a
+model quietly running pumps off a domestic connection.
+
+### Result
+
+**40 kWp solar, no wind, 100 kWh battery**
+
+| Metric | Status quo | Recommended |
+| --- | --- | --- |
+| Diesel | 21,970 L/yr | **937 L/yr** (−95.7%) |
+| Total cost | Rs 2,707,313/yr | **Rs 1,054,954/yr** |
+| Reliability | 94.7% | **100%** |
+| Unserved load | 8,306 kWh/yr | **0** |
+| CO2 | 149,246 kg/yr | **78,116 kg/yr** (−47.7%) |
+
+Saving **Rs 1,652,359/yr, Rs 16,524 per household**. Status-quo diesel works out to 1,098 L
+per farm against 1,080 L from the independent single-farm run -- within 1.7%, from a
+different load model.
+
+Every figure in the village load model is an assumption: 2.5 kWh/day per household, a 5 kW
+bulk milk cooler, four hours of water pumping. Structurally realistic, none of it metered.
 
 ## Status
 

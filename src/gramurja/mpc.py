@@ -71,12 +71,28 @@ class DispatchLP:
         self.has_battery = has_battery
         self.has_genset = has_genset
 
+        # Demand is carried as two groups because the grid treats them differently:
+        # irrigation sits on the agricultural connection, everything else on the domestic
+        # one. Generation on the microgrid's own side of the meter serves either.
         self.load = cp.Parameter(h, nonneg=True)
+        self.irrigation_load = cp.Parameter(h, nonneg=True)
         self.renewable = cp.Parameter(h, nonneg=True)
         self.feeder_available = [cp.Parameter(h, nonneg=True) for _ in feeders]
         self.soc_initial = cp.Parameter(nonneg=True)
 
+        groups = ("irrigation", "domestic")
         self.imports = [cp.Variable(h, nonneg=True) for _ in feeders]
+        self.group_imports = [
+            {g: cp.Variable(h, nonneg=True) for g in groups} for _ in feeders
+        ]
+        self.group_renewable = {g: cp.Variable(h, nonneg=True) for g in groups}
+        self.group_discharge = {g: cp.Variable(h, nonneg=True) for g in groups}
+        self.group_diesel = {g: cp.Variable(h, nonneg=True) for g in groups}
+        self.group_unmet = {g: cp.Variable(h, nonneg=True) for g in groups}
+
+        self.charge_from_renewable = cp.Variable(h, nonneg=True)
+        self.charge_from_grid = cp.Variable(h, nonneg=True)
+
         self.diesel = cp.Variable(h, nonneg=True)
         self.renewable_used = cp.Variable(h, nonneg=True)
         self.unmet = cp.Variable(h, nonneg=True)
@@ -84,10 +100,49 @@ class DispatchLP:
         self.discharge = cp.Variable(h, nonneg=True)
         self.soc = cp.Variable(h + 1, nonneg=True)
 
-        constraints = [self.renewable_used <= self.renewable]
+        constraints = [
+            self.renewable_used == sum(self.group_renewable.values()) + self.charge_from_renewable,
+            self.renewable_used <= self.renewable,
+            self.diesel == sum(self.group_diesel.values()),
+            self.discharge == sum(self.group_discharge.values()),
+            self.unmet == sum(self.group_unmet.values()),
+            self.charge == self.charge_from_renewable + self.charge_from_grid,
+        ]
 
-        for imp, feeder, available in zip(self.imports, feeders, self.feeder_available):
+        # Each group's demand must be met from what is allowed to reach it.
+        for group in groups:
+            demand = (
+                self.irrigation_load if group == "irrigation"
+                else self.load - self.irrigation_load
+            )
+            supply = (
+                sum(per_feeder[group] for per_feeder in self.group_imports)
+                + self.group_renewable[group]
+                + self.group_discharge[group]
+                + self.group_diesel[group]
+                + self.group_unmet[group]
+            )
+            constraints.append(supply == demand)
+
+        self.feeder_charge = [cp.Variable(h, nonneg=True) for _ in feeders]
+        for imp, per_feeder, to_battery, feeder, available in zip(
+            self.imports, self.group_imports, self.feeder_charge, feeders, self.feeder_available
+        ):
+            allowed = groups if feeder.serves == "all" else (feeder.serves,)
+            for group in groups:
+                if group not in allowed:
+                    constraints.append(per_feeder[group] == 0)
+
+            # Grid power reaches the battery only through a connection already allowed to
+            # serve the domestic side. Otherwise the battery would launder agricultural
+            # power into loads that connection cannot legally supply.
+            if feeder.serves == "irrigation":
+                constraints.append(to_battery == 0)
+
+            constraints.append(imp == sum(per_feeder.values()) + to_battery)
             constraints.append(imp <= feeder.max_import_kw * available)
+
+        constraints.append(self.charge_from_grid == sum(self.feeder_charge))
 
         genset_cap = diesel_unit.max_kw if has_genset else 0.0
         constraints.append(self.diesel <= genset_cap)
@@ -104,11 +159,6 @@ class DispatchLP:
             ]
         else:
             constraints += [self.charge == 0, self.discharge == 0, self.soc == 0]
-
-        supply = (
-            self.renewable_used + self.diesel + self.discharge + self.unmet + sum(self.imports)
-        )
-        constraints.append(supply == self.load + self.charge)
 
         economics = config.economics
         self.carbon_price = mpc_config.carbon_price_inr_per_kg
@@ -133,12 +183,14 @@ class DispatchLP:
     def solve(
         self,
         load: np.ndarray,
+        irrigation_load: np.ndarray,
         renewable: np.ndarray,
         feeder_status: list[np.ndarray],
         grid_carbon: np.ndarray,
         soc_initial: float,
     ) -> dict:
         self.load.value = load
+        self.irrigation_load.value = np.minimum(irrigation_load, load)
         self.renewable.value = renewable
         self.soc_initial.value = soc_initial
         for parameter, status in zip(self.feeder_available, feeder_status):
@@ -236,6 +288,7 @@ def run_mpc(
         )
         plan = lp.solve(
             load=_window(forecast.load_kw, profiles.load_kw, step, horizon),
+            irrigation_load=_window(profiles.pump_kw, profiles.pump_kw, step, horizon),
             renewable=_window(forecast.renewable_kw, renewable_total, step, horizon),
             feeder_status=[
                 _window(believed, actual, step, horizon)

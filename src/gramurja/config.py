@@ -41,6 +41,12 @@ class Feeder:
     max_import_kw: float
     import_price_per_kwh: float
 
+    # Which load this connection is allowed to serve. Agricultural and domestic supplies
+    # are separately sanctioned and separately tariffed -- running a pump off a domestic
+    # connection is not a physical impossibility so much as a different contract, and the
+    # price difference is exactly why it matters. "all" lets a connection serve both.
+    serves: str = "all"
+
 
 AGRICULTURAL_FEEDER = Feeder("agricultural", max_import_kw=10.0, import_price_per_kwh=1.50)
 VILLAGE_FEEDER = Feeder("village", max_import_kw=3.0, import_price_per_kwh=5.00)
