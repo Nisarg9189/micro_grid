@@ -1,5 +1,6 @@
 import { Landmark, RotateCw } from "lucide-react";
 import { Card } from "../ui/Card";
+import { FeatureBar } from "../ui/FeatureBar";
 import { SizingResults } from "./SizingResults";
 import { useVillageSizing } from "../../hooks/useVillageSizing";
 import { VILLAGE_SCENARIOS } from "../../data/scenarios";
@@ -29,6 +30,11 @@ export function VillageSizing() {
         farm's demand. It's a live, shortened-horizon version of a 365-day study already
         run offline; both agree on the answer.
       </p>
+
+      <FeatureBar tone="orange">
+        What this does: hits its own live backend endpoint and re-runs a real bounded
+        search at village scale on click -- not a lookup of a precomputed number.
+      </FeatureBar>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {VILLAGE_SCENARIOS.map((s) => {

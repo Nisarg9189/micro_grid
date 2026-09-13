@@ -1,4 +1,5 @@
 import { Card } from "../ui/Card";
+import { FeatureBar } from "../ui/FeatureBar";
 import { EnergyAreaChart } from "../charts/EnergyAreaChart";
 import type { EnergyDataPoint, TimeRange } from "../../types/energy";
 import { LoadingSkeleton } from "../ui/LoadingSkeleton";
@@ -66,6 +67,12 @@ export function EnergyTelemetry({
           ))}
         </div>
       </div>
+
+      <FeatureBar tone="blue">
+        What this does: plots the full hour-by-hour dispatch behind the headline
+        numbers -- every source's output against the load it served, over the chosen
+        time window.
+      </FeatureBar>
 
       {/* Semantic Legend Pills */}
       <div className="flex flex-wrap items-center gap-3 font-mono text-xs mb-6">

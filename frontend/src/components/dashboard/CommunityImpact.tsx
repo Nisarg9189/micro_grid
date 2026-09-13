@@ -1,5 +1,6 @@
 import { HeartHandshake, IndianRupee, Droplets, ShieldCheck, Leaf } from "lucide-react";
 import { Card } from "../ui/Card";
+import { FeatureBar } from "../ui/FeatureBar";
 import { dashboardImages } from "../../data/dashboardData";
 import { useSimulationContext } from "../../hooks/SimulationContext";
 
@@ -49,6 +50,12 @@ export function CommunityImpact() {
             : "Run a simulation to compare the optimiser against the status quo."}
         </p>
       </div>
+
+      <FeatureBar tone="blue">
+        What this does: converts the optimiser's savings into real household terms --
+        rupees, litres of diesel and kg of CO2, computed live against the status-quo
+        baseline, never a fixed number.
+      </FeatureBar>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-center">
 

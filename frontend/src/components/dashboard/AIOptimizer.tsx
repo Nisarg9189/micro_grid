@@ -1,6 +1,7 @@
 import { Cpu, Sparkles, AlertCircle, CheckCircle2, RotateCw } from "lucide-react";
 import { Card } from "../ui/Card";
 import { StatusPill } from "../ui/StatusPill";
+import { FeatureBar } from "../ui/FeatureBar";
 import type { OptimizationState } from "../../types/dashboard";
 
 export interface AIOptimizerProps {
@@ -55,6 +56,12 @@ export function AIOptimizer({
             {state === "optimizing" ? "SOLVING LP..." : state === "error" ? "ERROR" : "OPTIMAL"}
           </StatusPill>
         </div>
+
+        <FeatureBar tone="orange">
+          What this does: re-solves the hour-by-hour dispatch (solar, battery, feeders,
+          diesel) as a linear program every time you press Run -- this panel shows that
+          solve happening, not a canned animation.
+        </FeatureBar>
 
         {/* LP Metrics -- only what the backend actually reports */}
         <div className="grid grid-cols-2 gap-3 mb-6">

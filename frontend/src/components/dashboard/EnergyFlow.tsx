@@ -11,6 +11,7 @@ import {
 import { Card } from "../ui/Card";
 import { StatusPill } from "../ui/StatusPill";
 import { EnergyNode } from "../ui/EnergyNode";
+import { FeatureBar } from "../ui/FeatureBar";
 import { useSimulationContext } from "../../hooks/SimulationContext";
 import { peakLoadIndex, hourLabel } from "../../utils/horizon";
 
@@ -85,6 +86,12 @@ export function EnergyFlow() {
           {hasData ? "SIMULATED DISPATCH" : source === "offline" ? "BACKEND OFFLINE" : "AWAITING SIMULATION"}
         </StatusPill>
       </div>
+
+      <FeatureBar tone="orange">
+        What this does: shows exactly where every kWh came from and went, for one
+        snapshot hour -- the real dispatch decision the LP solver made, not an
+        illustration.
+      </FeatureBar>
 
       {/* Real sources -- each reads its own series, none combined or invented. A wind
           turbine only appears when one is actually installed (params.wind > 0); the

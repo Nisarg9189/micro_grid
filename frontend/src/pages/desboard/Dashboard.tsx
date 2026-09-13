@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { AppShell } from "../../components/layout/AppShell";
+import { PageNav } from "../../components/layout/PageNav";
+import type { DashboardTabId } from "../../components/layout/PageNav";
 import { HeroSection } from "../../components/dashboard/HeroSection";
 import { SystemPipeline } from "../../components/dashboard/SystemPipeline";
 import { ConfigPanel } from "../../components/dashboard/ConfigPanel";
@@ -15,7 +18,12 @@ import { useEnergyData } from "../../hooks/useEnergyData";
 import { useOptimizer } from "../../hooks/useOptimizer";
 
 export default function Dashboard() {
-  const { mode, setMode, kpis } = useDashboard();
+  const { kpis } = useDashboard();
+  // Which single tab is visible below the Hero. Sections stay mounted (just hidden) when
+  // not active, so switching away and back never loses a sizing run, an advice fetch, or
+  // any other in-progress result -- only visibility changes, not component state.
+  const [activeTab, setActiveTab] = useState<DashboardTabId>("results");
+  const show = (id: DashboardTabId) => (activeTab === id ? "" : "hidden");
 
   const {
     timeRange,
@@ -35,33 +43,34 @@ export default function Dashboard() {
   } = useOptimizer();
 
   return (
-    <AppShell mode={mode} onModeChange={setMode}>
-      {/* 1. Hero Section */}
-      <HeroSection
-        onRunOptimization={handleRunOptimization}
-        isOptimizing={optState === "optimizing"}
-      />
+    <AppShell>
+      {/* Hero -- always visible */}
+      <HeroSection />
 
-      {/* 2. How It Works -- the full pipeline, start to end, linking to each section below */}
-      <SystemPipeline />
+      {/* Page switcher + Dashboard tabs -- only the selected tab's section is visible */}
+      <PageNav activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* 3. Configuration -- site, hardware, load and prices, wired to every result below */}
-      <ConfigPanel />
+      <div className={show("how-it-works")}>
+        <SystemPipeline />
+      </div>
 
-      {/* 3b. Village-scale validation -- same bounded search, real aggregate village
-          demand instead of one farm. Its own backend endpoint, its own timing budget. */}
-      <VillageSizing />
+      <div className={show("configuration")}>
+        <ConfigPanel />
+      </div>
 
-      {/* 4. KPI Summary Grid */}
-      <div id="results">
+      <div className={show("village-scale")}>
+        <VillageSizing />
+      </div>
+
+      <div className={show("results")} id="results">
         <KPIGrid kpis={kpis} />
       </div>
 
-      {/* 5. Live Energy Flow Diagram */}
-      <EnergyFlow />
+      <div className={show("energy-flow")}>
+        <EnergyFlow />
+      </div>
 
-      {/* 6. Split Section: Telemetry & AI Optimizer */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-8 items-start">
+      <div className={`${show("telemetry")} grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-8 items-start`}>
         <EnergyTelemetry
           data={energyData}
           timeRange={timeRange}
@@ -86,11 +95,13 @@ export default function Dashboard() {
           on nothing real. A fake control that always reports success is worse than no
           control. See docs/phase2-audit.md, which already flagged this. */}
 
-      {/* 7. Smart Agriculture & Solar Irrigation -- genuinely wired to /api/advice */}
-      <AgriculturePanel />
+      <div className={show("agriculture")}>
+        <AgriculturePanel />
+      </div>
 
-      {/* 8. Community Social & Environmental Impact */}
-      <CommunityImpact />
+      <div className={show("community")}>
+        <CommunityImpact />
+      </div>
     </AppShell>
   );
 }

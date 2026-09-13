@@ -5,10 +5,7 @@ import { useSimulationContext } from "./SimulationContext";
 import { Activity, Droplets, ShieldCheck, Leaf } from "lucide-react";
 
 export function useDashboard() {
-  // mode lives in SimulationContext now, not here -- AUTO actually debounce-reruns the
-  // simulation on every config change there; this used to hold its own copy that nothing
-  // but the header's own highlight state ever read.
-  const { data: simData, source, mode, setMode } = useSimulationContext();
+  const { data: simData, source } = useSimulationContext();
 
   const kpis = useMemo<KPI[]>(() => {
     if (simData && source === "simulation") {
@@ -68,8 +65,6 @@ export function useDashboard() {
   }, [simData, source]);
 
   return {
-    mode,
-    setMode,
     kpis,
     source,
   };

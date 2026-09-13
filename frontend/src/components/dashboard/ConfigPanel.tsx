@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings2, Cpu, Ruler, RotateCw } from "lucide-react";
+import { Settings2, Cpu, Ruler, RotateCw, Plus, X } from "lucide-react";
 import { Card } from "../ui/Card";
 import { NumberField } from "../ui/NumberField";
 import { SelectField } from "../ui/SelectField";
@@ -9,19 +9,46 @@ import { useSizing } from "../../hooks/useSizing";
 import { SITE_PRESETS } from "../../data/presets";
 import { SizingResults } from "./SizingResults";
 import { ScenarioPicker } from "./ScenarioPicker";
+import { FeatureBar } from "../ui/FeatureBar";
 
 // Full parity with report/console.html's Controls panel: same fields, same site presets,
 // same defaults -- so the two evaluator surfaces answer the same question on the same
 // terms. Everything here feeds the one shared params object every API call reads.
 export function ConfigPanel() {
-  const { params, setParam, setParams, executeSimulation, isLoading, mode } = useSimulationContext();
+  const { params, setParam, setParams, executeSimulation, isLoading } = useSimulationContext();
   const sizing = useSizing();
   // Collapsed by default -- results are the point of the page; the config wall
   // shouldn't be the first thing between a visitor and the numbers they came for.
   const [open, setOpen] = useState(false);
 
-  const activePreset = SITE_PRESETS.find((p) => p.lat === params.lat && p.lon === params.lon);
+  // Custom sites a visitor adds themselves -- session-only (no backend to persist
+  // them to), so they live alongside the four built-in presets for as long as the
+  // page stays open.
+  const [customSites, setCustomSites] = useState<typeof SITE_PRESETS>([]);
+  const [addingSite, setAddingSite] = useState(false);
+  const [newSiteName, setNewSiteName] = useState("");
+  const [newSiteLat, setNewSiteLat] = useState(params.lat);
+  const [newSiteLon, setNewSiteLon] = useState(params.lon);
+
+  const allSites = [...SITE_PRESETS, ...customSites];
+  const activePreset = allSites.find((p) => p.lat === params.lat && p.lon === params.lon);
   const busy = isLoading || sizing.loading;
+
+  const startAddingSite = () => {
+    setNewSiteName("");
+    setNewSiteLat(params.lat);
+    setNewSiteLon(params.lon);
+    setAddingSite(true);
+  };
+
+  const confirmAddSite = () => {
+    const name = newSiteName.trim();
+    if (!name || !Number.isFinite(newSiteLat) || !Number.isFinite(newSiteLon)) return;
+    const site = { name, lat: newSiteLat, lon: newSiteLon, site: name };
+    setCustomSites((prev) => [...prev, site]);
+    setParams({ lat: site.lat, lon: site.lon, site: site.site });
+    setAddingSite(false);
+  };
 
   return (
     <Card id="configuration" className="p-6 sm:p-8">
@@ -40,9 +67,9 @@ export function ConfigPanel() {
             {params.site} &middot; {params.days} days &middot; {params.solar} kWp / {params.wind} kW / {params.battery} kWh
           </h3>
           <p className="text-sm text-slate-500">
-            {mode === "auto"
-              ? "AUTO mode: change anything below and the optimiser re-runs on its own a moment later. Every number on this page comes from that one live simulation."
-              : "MANUAL mode: change anything below, then press “Run the optimiser” to apply it. Every number on this page comes from that one live simulation."}
+            Change anything below, then press "Run the optimiser" to apply it. Every
+            number on this page comes from that one live simulation -- nothing re-runs
+            on its own.
           </p>
         </div>
         <StatusPill tone="slate">{open ? "Collapse" : "Expand"}</StatusPill>
@@ -50,6 +77,12 @@ export function ConfigPanel() {
 
       {open && (
         <div className="mt-6 space-y-6">
+          <FeatureBar tone="orange">
+            What this does: sets the real hardware, site and prices every API call on
+            this page reads -- or click a tested scenario below to reproduce a real
+            result instantly, or let the sizing agent choose the hardware for you.
+          </FeatureBar>
+
           <ScenarioPicker />
 
           <div className="grid grid-cols-1 gap-6 min-w-0 lg:grid-cols-2 xl:grid-cols-4">
@@ -58,8 +91,8 @@ export function ConfigPanel() {
               <legend className="mb-2 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Site
               </legend>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {SITE_PRESETS.map((preset) => (
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                {allSites.map((preset) => (
                   <button
                     key={preset.name}
                     onClick={() => setParams({ lat: preset.lat, lon: preset.lon, site: preset.site })}
@@ -72,7 +105,46 @@ export function ConfigPanel() {
                     {preset.name}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => (addingSite ? setAddingSite(false) : startAddingSite())}
+                  title="Add a custom site"
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border transition-colors cursor-pointer ${
+                    addingSite
+                      ? "border-[#EA580C] bg-orange-50 text-[#EA580C]"
+                      : "border-dashed border-slate-300 text-slate-400 hover:border-[#EA580C] hover:text-[#EA580C]"
+                  }`}
+                >
+                  {addingSite ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                </button>
               </div>
+
+              {addingSite && (
+                <div className="mb-3 space-y-2 rounded-xl border border-orange-200 bg-orange-50/40 p-3">
+                  <label className="block">
+                    <span className="mb-1 block font-mono text-xs text-slate-500">Site name</span>
+                    <input
+                      type="text"
+                      value={newSiteName}
+                      onChange={(e) => setNewSiteName(e.target.value)}
+                      placeholder="e.g. Bhuj, Kutch"
+                      autoFocus
+                      className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-xs font-semibold text-slate-800 outline-none transition-colors focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100"
+                    />
+                  </label>
+                  <NumberField label="Latitude" value={newSiteLat} step={0.01} onChange={setNewSiteLat} />
+                  <NumberField label="Longitude" value={newSiteLon} step={0.01} onChange={setNewSiteLon} />
+                  <button
+                    type="button"
+                    onClick={confirmAddSite}
+                    disabled={!newSiteName.trim()}
+                    className="w-full rounded-lg bg-[#EA580C] px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer"
+                  >
+                    Add site
+                  </button>
+                </div>
+              )}
+
               <NumberField label="Latitude" value={params.lat} step={0.01} onChange={(v) => setParam("lat", v)} />
               <NumberField label="Longitude" value={params.lon} step={0.01} onChange={(v) => setParam("lon", v)} />
               <NumberField label="Days to simulate" value={params.days} step={1} min={7} max={90} onChange={(v) => setParam("days", v)} />
@@ -167,7 +239,7 @@ export function ConfigPanel() {
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F7931A] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:scale-[1.02] disabled:opacity-60 cursor-pointer"
               >
                 {isLoading ? <RotateCw className="h-3.5 w-3.5 animate-spin" /> : <Cpu className="h-3.5 w-3.5" />}
-                {isLoading ? "Optimising…" : mode === "auto" ? "Run now" : "Run the optimiser"}
+                {isLoading ? "Optimising…" : "Run the optimiser"}
               </button>
             </div>
           </div>

@@ -1,17 +1,8 @@
 import { Link } from "react-router-dom";
 import { Zap, BrainCircuit, CloudOff } from "lucide-react";
-import type { OperatingMode } from "../../types/dashboard";
 import { useSimulationContext } from "../../hooks/SimulationContext";
 
-export interface HeaderProps {
-  mode: OperatingMode;
-  onModeChange: (newMode: OperatingMode) => void;
-}
-
-export function Header({
-  mode,
-  onModeChange,
-}: HeaderProps) {
+export function Header() {
   const { source, lastUpdated } = useSimulationContext();
   return (
     <header className="sticky top-4 z-30 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-3 shadow-[0_12px_35px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
@@ -84,30 +75,6 @@ export function Header({
             </span>
           </div>
         )}
-
-        {/* AUTO / MANUAL Switcher */}
-        <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-          <button
-            onClick={() => onModeChange("auto")}
-            className={`rounded-lg px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              mode === "auto"
-                ? "bg-slate-950 text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            Auto
-          </button>
-          <button
-            onClick={() => onModeChange("manual")}
-            className={`rounded-lg px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              mode === "manual"
-                ? "bg-slate-950 text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            Manual
-          </button>
-        </div>
       </div>
     </header>
   );

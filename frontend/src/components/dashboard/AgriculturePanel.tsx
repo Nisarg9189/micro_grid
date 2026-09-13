@@ -1,6 +1,7 @@
 import { Sprout, Droplets, Sun, BrainCircuit, CheckCircle2, RotateCw, AlertCircle } from "lucide-react";
 import { Card } from "../ui/Card";
 import { StatusPill } from "../ui/StatusPill";
+import { FeatureBar } from "../ui/FeatureBar";
 import { dashboardImages } from "../../data/dashboardData";
 import { useAdvice } from "../../hooks/useAdvice";
 import { useSimulationContext } from "../../hooks/SimulationContext";
@@ -49,6 +50,12 @@ export function AgriculturePanel() {
           </button>
         </div>
       </div>
+
+      <FeatureBar tone="emerald">
+        What this does: turns the same simulation into a farmer-facing recommendation --
+        the best hour to start irrigating, and how much it saves, straight from the
+        advisory agent (/api/advice).
+      </FeatureBar>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         

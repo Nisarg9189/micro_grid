@@ -1,41 +1,7 @@
-import { Cpu, ArrowRight, BrainCircuit, Sun, Battery, Activity } from "lucide-react";
+import { ArrowRight, BrainCircuit } from "lucide-react";
 import { dashboardImages } from "../../data/dashboardData";
-import { useSimulationContext } from "../../hooks/SimulationContext";
-import { peakLoadIndex } from "../../utils/horizon";
 
-export interface HeroSectionProps {
-  onRunOptimization: () => void;
-  isOptimizing?: boolean;
-}
-
-// One decimal place, or an em dash while no simulation has resolved -- a fabricated
-// "0.0 kW" reads as a real reading of nothing, which is a different claim from "no data".
-function fmt(value: number | null, digits = 1): string {
-  return value == null ? "—" : value.toFixed(digits);
-}
-
-export function HeroSection({ onRunOptimization, isOptimizing = false }: HeroSectionProps) {
-  const { data: simData, source } = useSimulationContext();
-  const hasData = source === "simulation" && simData != null;
-
-  const series = simData?.series ?? null;
-  // The peak-demand hour, not the last hour of the horizon -- the last hour is often
-  // the middle of the night, where solar reads 0 and nothing looks like it's happening.
-  // The full breakdown for this hour (solar/battery/grid/load/diesel) lives in the
-  // Energy Flow section below; this card only needs the two headline figures.
-  const peak = series ? peakLoadIndex(series.load_kw) : -1;
-  const at = (arr?: number[]) => (arr && peak >= 0 ? arr[peak] : null);
-
-  const solarKw = at(series?.solar_kw);
-  const socPct = at(series?.soc) != null ? at(series?.soc)! * 100 : null;
-  const reliabilityPct = hasData ? simData!.kpis.optimiser.reliability_pct : null;
-
-  const highlights: [string, string, typeof Sun, string][] = [
-    [hasData ? `${fmt(solarKw)} kW` : "—", "Solar Output", Sun, "text-[#EA580C]"],
-    [hasData ? `${fmt(socPct, 0)}%` : "—", "Battery SOC", Battery, "text-green-600"],
-    [hasData ? `${fmt(reliabilityPct, 1)}%` : "—", "Reliability", Activity, "text-blue-600"],
-  ];
-
+export function HeroSection() {
   const scrollToFlow = () => {
     document.getElementById("energy-flow")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -61,16 +27,10 @@ export function HeroSection({ onRunOptimization, isOptimizing = false }: HeroSec
           Optimize solar, balance batteries, reduce diesel, and secure farm irrigation.
         </p>
 
-        {/* Primary CTA Buttons */}
+        {/* Primary CTA -- the actual "run it" action lives in the Configuration tab's
+            own button now, right next to the hardware you're running it on, rather than
+            duplicated up here disconnected from the settings it would use. */}
         <div className="mt-8 flex flex-wrap gap-3.5">
-          <button
-            onClick={onRunOptimization}
-            disabled={isOptimizing}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-[#EA580C] to-[#F7931A] px-5 font-mono text-[11px] font-bold uppercase tracking-wider text-white shadow-[0_10px_25px_rgba(234,88,12,0.25)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_14px_35px_rgba(234,88,12,0.32)] disabled:opacity-60 cursor-pointer"
-          >
-            <Cpu className={`h-4 w-4 ${isOptimizing ? "animate-spin" : ""}`} />
-            {isOptimizing ? "Optimizing..." : "Run AI Optimization"}
-          </button>
           <button
             onClick={scrollToFlow}
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-800 transition-all duration-300 hover:border-[#EA580C] hover:bg-orange-50 cursor-pointer"
@@ -78,24 +38,6 @@ export function HeroSection({ onRunOptimization, isOptimizing = false }: HeroSec
             View Energy Flow
             <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
-
-        {/* Mini Highlights Grid -- solar/SOC are the peak-demand hour of the horizon,
-            reliability is the whole-horizon result; none of this is a live sensor feed.
-            The full hour-by-hour breakdown lives in the Energy Flow section below, so
-            this stays three numbers rather than repeating that section here too. */}
-        <div className="mt-9 grid max-w-lg grid-cols-3 gap-3">
-          {highlights.map(([val, label, Icon, colorClass]) => (
-            <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-              <div className="flex items-center gap-1.5">
-                <Icon className={`h-3.5 w-3.5 ${colorClass}`} />
-                <span className="font-mono text-base font-bold text-slate-950">{val}</span>
-              </div>
-              <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-slate-400">
-                {label}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 

@@ -1,17 +1,12 @@
 import React from "react";
 import { Header } from "./Header";
-import type { HeaderProps } from "./Header";
 import { Footer } from "./Footer";
 
-export interface AppShellProps extends HeaderProps {
+export interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({
-  children,
-  mode,
-  onModeChange,
-}: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   return (
     <div className="relative min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-[#F7931A] selection:text-white">
       {/* Ambient background illumination */}
@@ -29,7 +24,7 @@ export function AppShell({
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl space-y-8 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
-        <Header mode={mode} onModeChange={onModeChange} />
+        <Header />
 
         <main className="space-y-8">
           {children}

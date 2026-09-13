@@ -1,7 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 
-export type OperatingMode = "auto" | "manual";
-
 export type OptimizationState = "idle" | "optimizing" | "success" | "error";
 
 export interface KPI {
