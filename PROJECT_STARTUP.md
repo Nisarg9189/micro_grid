@@ -158,10 +158,61 @@ rerunning `build_dashboard.py` and rebuilding, as above. Edit `SOLAR_KWP`, `BATT
 or `WEEK_START_DAY` at the top of `build_dashboard.py` to change what it plots. Making the
 controls live would need a local API server in front of the model, which is not built.
 
+## The React dashboard (this is the live demo)
+
+This is the primary, actively developed interface -- a full React/TypeScript/Vite app in
+`frontend/`, distinct from the static `report/dashboard.html` above and the older
+`report/console.html` below. It needs the backend API running in one terminal and the
+frontend dev server in another.
+
+**Terminal 1 -- backend:**
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/serve.py
+```
+
+Runs on `http://127.0.0.1:8000`, unchanged from the console section below -- same
+`/api/simulate`, `/api/size` and `/api/advice` endpoints, plus `/api/village/size` (see
+below). CORS is already configured for `http://localhost:5173`.
+
+**Terminal 2 -- frontend:**
+
+```bash
+cd frontend
+npm install   # first time only
+npm run dev -- --port 5173
+```
+
+Open `http://localhost:5173`. Two pages:
+
+- **`/`  -- Prediction** -- the forecasting pipeline explained end to end (what's
+  predicted, forecast accuracy, the MPC look-ahead, the research finding), matching the
+  screenshots in the main `README.md`.
+- **`/dashboard`** -- the live control surface, organised as tabs so only one section is
+  ever on screen at a time: **How It Works, Configuration, Village Scale, Results, Energy
+  Flow, Telemetry, Agriculture, Community.**
+
+Two things worth knowing before you demo it:
+
+- **Configuration** has a "Tested Scenarios" picker -- five configurations this project
+  actually ran and reported a result for (including a manually-installed wind turbine, to
+  show it genuinely generates power even though the sizing agent won't choose it), plus a
+  "+" button to add any site by name and coordinates.
+- **Village Scale** calls its own endpoint, `/api/village/size` -- the same bounded-search
+  sizing agent as Configuration, but run against real aggregate village demand (100
+  households, 20 farms, dairy, water supply) instead of one farm. It takes 20-40 seconds
+  live; this is what proved the corrected wind finding in `README.md` Section 10.
+
+There is no AUTO-refresh mode -- every run happens because someone pressed a Run button,
+on this page or the Configuration tab's own.
+
 ## The interactive console
 
 **Full guide: [CONSOLE.md](CONSOLE.md)** -- every control, what changing it does, worked
 examples, and exactly which inputs are measured data and which are assumptions.
+
+This is an older, single-file HTML console (`report/console.html`) kept for reference --
+the React dashboard above is the actively maintained surface.
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/serve.py
@@ -200,9 +251,10 @@ seasonal bias.
 **Localhost only.** The endpoints run real CPU work and there is no authentication, so the
 server binds to 127.0.0.1 and is a review tool for one machine, not something to expose.
 
-API docs, if you want to drive it directly, are at `/api/docs`. The three endpoints are
-`POST /api/simulate`, `POST /api/size` and `POST /api/advice`, all taking the same
-parameter object.
+API docs, if you want to drive it directly, are at `/api/docs`. Four endpoints:
+`POST /api/simulate`, `POST /api/size` and `POST /api/advice` take the same farm-scale
+parameter object; `POST /api/village/size` takes a separate village-scale one (households,
+farms, hub height, wind price) and is what the React dashboard's Village Scale tab calls.
 
 ## Layout
 
@@ -216,31 +268,43 @@ src/gramurja/
   baseline.py   status-quo and rule-based reference runs
   mpc.py        receding-horizon dispatch, as a cvxpy linear program
   advice.py     irrigation window search and the farmer briefing
+  advisory.py   multi-signal farmer advisory -- forcing vs discretionary triggers
   explain.py    Gemini for phrasing only, with number verification
   village.py    community load model with pump diversity
   sharing.py    per-participant cluster model and the village line
   sizing.py     capital costing and the parallel configuration sweep
   search.py     the same sizing answer with fewer simulations, by a provable bound
   kpi.py        diesel, cost, CO2 and reliability from a run log
-  api.py        FastAPI endpoints behind the console
+  api.py        FastAPI backend behind both the console and the React frontend --
+                /api/simulate, /api/size, /api/advice (farm scale) and
+                /api/village/size (village scale)
 scripts/
-  simulate.py           parameterised entry point - any site, hardware, tariff
-  serve.py              the interactive console at 127.0.0.1:8000
-  run_baseline.py       the headline case, three controllers
-  optimize_sizing.py    derive hardware for the Banaskantha farm
-  agent_sizing.py       bounded search against the exhaustive sweep
-  village_scenario.py   the coastal village case, where wind competes
-  village_microgrid.py  a whole Banaskantha village, not one farm
-  energy_sharing.py     what a village line between neighbours is worth
-  combined_village.py   the whole village as one run, with every flow attributed
-  validate_forecast.py  synthesised forecast vs genuine archived forecasts
-  farmer_message.py     the message a farmer receives, via Gemini
-  build_dashboard.py    regenerates the dashboard's data
+  simulate.py            parameterised entry point - any site, hardware, tariff
+  serve.py               the API server at 127.0.0.1:8000 (console + React frontend)
+  run_baseline.py        the headline case, three controllers
+  optimize_sizing.py     derive hardware for the Banaskantha farm
+  agent_sizing.py        bounded search against the exhaustive sweep, farm scale
+  agent_sizing_village.py  the same agreement check, at real village scale
+  village_scenario.py    the coastal village case, where wind was once thought to compete
+  village_microgrid.py   a whole Banaskantha village, not one farm
+  energy_sharing.py      what a village line between neighbours is worth
+  combined_village.py    the whole village as one run, with every flow attributed
+  validate_forecast.py   synthesised forecast vs genuine archived forecasts
+  farmer_message.py      the message a farmer receives, via Gemini
+  build_dashboard.py     regenerates the static dashboard's data
 report/
   mid-evaluation.html   results write-up
   architecture.html     system and agent-layer diagrams
-  dashboard.html        the operations board (React, built from the template)
-  console.html          the interactive console served by scripts/serve.py
+  dashboard.html        the static operations board (React, built from the template)
+  console.html          the older interactive console served by scripts/serve.py
+frontend/
+  src/pages/            Prediction ("/") and Dashboard ("/dashboard")
+  src/components/dashboard/  Config Panel, Village Sizing, Energy Flow, Telemetry,
+                        Agriculture Panel, Community Impact, Scenario Picker
+  src/hooks/            SimulationContext (shared live state), useSizing,
+                        useVillageSizing, useAdvice
+                        -- the actively developed live demo; run via
+                        `npm run dev` (see "The React dashboard" above)
 ```
 
 The capacities in `DEFAULT_CONFIG` are reference values that the sizing sweep scales
@@ -317,7 +381,7 @@ The synthesised forecast reproduces **93% of the cost penalty a real forecast im
 the annual figures elsewhere in this README are a mild upper bound rather than a different
 kind of claim. Reliability is 100% under all three.
 
-## Another site, where wind competes
+## Another site, where wind was once thought to compete
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/village_scenario.py
@@ -328,10 +392,15 @@ sharing one 80 m turbine, which is plausible where a single farm's mast is not. 
 matters more than the site does -- 18 m to 80 m lifts the capacity factor from 8.6% to
 22.2%, because a farm mast sits in slow surface wind.
 
-There wind misses the optimum by 0.75% and enters it below Rs 60,000/kW, and as it cheapens
-the optimiser buys more of it and retires solar. The engine follows the resource rather
-than carrying a bias against wind; Banaskantha simply has none. Wind is a community
-technology here, not a farm one.
+**This script's own result is superseded -- see `README.md` Section 10.** An earlier run
+reported wind entering the optimum below Rs 60,000/kW here. That was produced before a real
+scaling bug in the bounded search was found and fixed (`search.py`'s `horizon_scale`
+correction). Retested on the corrected code, at real village-scale demand (100 households,
+20 farms, dairy, water), at this same coastal site and mast height, down to Rs 55,000/kW --
+cheaper than the old threshold -- wind is 0 kW in the recommended system and every top-5
+candidate. The engine still follows the resource rather than carrying a bias; the resource
+at Dwarka is real (utility-scale wind farms operate on that coast) -- it just doesn't clear
+the cost bar at single-village scale, in every configuration tested so far.
 
 ## A whole village, not one farm
 
