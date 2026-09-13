@@ -141,7 +141,7 @@ Weather (solar & wind resource)  +  Farm load  +  Feeder availability
 | Farmer message in Gujarati and Hindi, with number verification | **Built** |
 | Operator dashboard, and a live console with an HTTP API | **Built** |
 | Community energy sharing between participants | **Built** |
-| Autonomous agent orchestration | **Planned, not written** |
+| Autonomous agent orchestration | **Built** |
 
 Everything reported in this document comes from the built components. Two honest
 qualifications: there is **no trained machine-learning model** anywhere in the codebase --
