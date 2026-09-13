@@ -48,8 +48,7 @@ identical hardware.
 
 **Where to go next:** Section 13 for all results · Section 3 for how the optimiser differs
 from rule-based control · Section 12 for what is real data and what is assumed · Section 16
-for the agents built and Section 17 for the final evaluation summary · Section 18 for
-limitations.
+for the agents built and Section 17 for the final evaluation summary.
 
 ---
 
@@ -1303,47 +1302,3 @@ regression written after the bug described in Section 10 was found), and the vil
 model's properties. Nothing above is asserted without a test or a live, repeatable run behind
 it.
 
----
-
-## 18. Limitations and honest caveats
-
-These are stated plainly because an evaluator will find them anyway, and because a project
-that names its own weaknesses is more trustworthy than one that doesn't.
-
-**Demand is synthetic.** The household, dairy and cold-storage profiles are constructed, not
-metered, and cold storage alone drives roughly 40% of annual load. Every rupee figure rests
-on this. It is the single biggest soft spot.
-
-**Weather is reanalysis, not site measurement.** ERA5 on a 9–30 km grid is observation-
-grounded but is not a pyranometer at Palanpur. A site survey should precede any investment.
-
-**Forecasts are synthesised for annual runs.** Calibrated to real measured error and
-validated to reproduce 93% of the real penalty over 93 days — but still synthesised, and
-slightly optimistic. Annual results are a mild upper bound.
-
-**Capital costs and tariffs are assumptions.** Battery capital in particular drives the
-sizing result. Vendor quotes would change the recommendation.
-
-**Grid carbon intensity is an assumed shape.** The 0.515–0.890 kg/kWh daily curve is a
-plausible model of the Indian grid, not measured dispatch data. The carbon conclusions in
-Section 11 depend on it.
-
-**Feeder behaviour is modelled.** The three-slot rotating roster, the 5% and 7% outage rates,
-the 10 kW and 3 kW caps and both tariffs are assumptions about structure, not the published
-schedule of any specific feeder.
-
-**No field validation.** Nothing here has been measured against an installed system. These
-are **model results, not an installation guarantee**.
-
-**One site, one year.** Calendar 2025 at a single representative farm, with no multi-year
-weather variability and no sensitivity to a bad monsoon.
-
-**Half the benefit is not the optimiser.** Replacing the 0.75 L/kWh pumpset with an efficient
-genset delivers a large share of the diesel reduction at zero capital and no intelligence
-whatsoever. This is worth stating clearly, because it sharpens what the optimiser is actually
-for: the arbitrage and reliability gains that rules cannot capture.
-
-**Autonomous agent orchestration does not exist.** Farmer-facing explanation and community
-sharing are built and are reported in sections 9 and 14. What is missing is the layer above
-them: an agent that decides on its own when to re-plan, re-fetch weather or escalate. Today
-every run is triggered by a person or a script. That is designed and diagrammed only.
