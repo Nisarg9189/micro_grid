@@ -34,9 +34,12 @@ not assumed.
 2. **It survives imperfect forecasts.** 88% of the perfect-foresight advantage remains when
    the controller plans on forecasts carrying this site's genuinely measured 17.5% error —
    and that forecast was itself validated against real archived weather predictions.
-3. **Wind was evaluated, not assumed away.** It loses at Palanpur on measured physics (1.2%
-   capacity factor), but the same engine *selects* it at a coastal village site below
-   ₹60,000/kW. The model follows the resource rather than carrying a bias.
+3. **Wind was evaluated, not assumed away — and rigorously.** It loses at Palanpur on
+   measured physics (1.2% capacity factor), and after a scaling bug was found and fixed in
+   the sizing search, a full retest at real village scale, at a genuinely windy coastal site,
+   with a tall shared mast and a near-free price, still did not select it (Section 10). The
+   model follows the economics wherever they lead, including to an answer that isn't the
+   flattering one.
 
 **The uncomfortable one, stated upfront:** roughly half the diesel reduction comes from
 replacing an inefficient diesel pumpset with a proper generator — no AI involved. What the
@@ -45,7 +48,8 @@ identical hardware.
 
 **Where to go next:** Section 13 for all results · Section 3 for how the optimiser differs
 from rule-based control · Section 12 for what is real data and what is assumed · Section 16
-for limitations.
+for the agents built and Section 17 for the final evaluation summary · Section 18 for
+limitations.
 
 ---
 
@@ -841,34 +845,64 @@ Not on cost — on physics.
 Banaskantha is inland northern Gujarat. The state's wind resource is on the Kutch and
 Saurashtra coast.
 
-### The Dwarka experiment
+### The Dwarka experiment — revisited and corrected
 
-To check that the engine follows the resource rather than carrying a built-in bias, the same
-code was run at **Dwarka** on the Saurashtra coast, at **village scale** — 20 farms
-(303,500 kWh/year) sharing one **80 m turbine**, which is plausible for a community where a
-single farm's 18 m mast is not.
+An earlier pass of this project ran the same question at Dwarka village scale and reported
+that wind entered the optimum below about ₹60,000/kW. That result was produced before a real
+bug in the sizing search was found and fixed: the branch-and-bound agent's pruning bound
+compared unscaled totals across horizons shorter than a year, which under-counted energy
+cost relative to capital and could tip a close call the wrong way (see `search.py`'s
+`horizon_scale` correction, and `tests/test_search.py` for the regression tests written
+against it). The Dwarka table above is superseded by the exhaustive retest below, run on the
+corrected code.
 
-**Hub height turned out to matter more than the site.** Raising it from 18 m to 80 m lifted
-the capacity factor from 8.6% to **22.2%**, because a farm-scale mast sits in slow surface
-wind. And 35% of that output arrives **after dark**, when solar contributes nothing.
+**The retest was deliberately harder to satisfy than the original claim.** Every factor that
+could plausibly help wind was tested, separately and then stacked together, at both farm and
+real village scale:
 
-| Wind capital | Solar | Wind | Battery | Total/year | Wind selected |
-|---|---|---|---|---|---|
-| ₹70,000/kW | 60 kWp | 0 | 100 kWh | ₹1,686,963 | No — by 0.75% |
-| **₹60,000/kW** | 40 kWp | **20 kW** | 100 kWh | ₹1,683,517 | **Yes** |
-| ₹50,000/kW | 40 kWp | 20 kW | 100 kWh | ₹1,655,608 | Yes |
-| ₹40,000/kW | 40 kWp | 40 kW | 100 kWh | ₹1,614,095 | Yes |
+| Test | Configuration | Wind selected |
+|---|---|---|
+| Farm, default price | Palanpur, 18 m mast, ₹120,000/kW | **0 kW** |
+| Farm, cheap price | Palanpur, 18 m mast, ₹55,000/kW | **0 kW** |
+| Farm, near-free price | Palanpur, 18 m mast, ₹10,000/kW | **0 kW** |
+| Farm, inflated demand | Same site, load scaled ~40×(diesel use jumped 40× in response) | **0 kW** |
+| Village, default | 100 households + 20 farms + dairy + water, Palanpur, 18 m mast, ₹120,000/kW | **0 kW** |
+| Village, best case for wind | Same village demand, **Dwarka coast**, **80 m shared mast**, **₹55,000/kW** — every favourable factor at once | **0 kW** |
 
-**Wind enters the modelled optimum below about ₹60,000/kW** under these assumptions, and as
-it cheapens the optimiser buys more of it and retires solar — trading the two resources on
-merit.
+The last row is the important one: it combines real village-scale demand, a genuinely windy
+coastal site, a tall shared mast, and a price cheaper than the old ₹60,000/kW threshold — and
+wind is still 0 kW in the recommended system and in every one of the top 5 candidates.
+Recommended: **40 kWp solar, 0 kW wind, 100 kWh battery, ₹1,045,538/year at 100% reliability**
+(365-day, full lattice) — reproduced live and interactively at a shortened 30-day horizon by
+the `/api/village/size` endpoint the dashboard's "Village-Scale Validation" panel calls,
+which returned the same recommendation (₹944,368/year at that horizon) in about 35 seconds.
+
+**Why it loses even here.** A 20 kW turbine at ₹55,000/kW still carries roughly ₹150,000/year
+in annualised capital and O&M just to own it, before it generates anything. The same test
+also declined to add a battery — the winning system uses 100 kWh in the full-year run but,
+at the 30-day interactive horizon, the cheapest system uses none at all; adding 50 kWh there
+costs about ₹149,000/year more in capital but only saves about ₹142,000/year in displaced
+diesel and feeder imports, a loss of roughly ₹7,000/year. Wind is being asked to solve the
+same problem a battery already isn't quite worth solving, with a less flexible tool: a
+battery can store any surplus and release it at the exact hour of shortfall, while wind can
+only help if it happens to be generating during that shortfall, and the site's demand curve
+doesn't line up well enough with when the wind actually blows.
+
+**This is not "Dwarka has no wind."** Devbhumi Dwarka is a real utility-scale wind hub —
+Tata Power, THDC and Apraava Energy all operate multi-megawatt wind farms on that coast. The
+finding is about the gap between utility-scale and single-village-scale economics: a 2 MW
+commercial turbine reaches economies of scale a 20 kW community turbine never will.
 
 ### The honest conclusion
 
-Wind is **not globally rejected**. GramUrja evaluates whether wind makes sense for a specific
-site and a specific set of economics, and at Palanpur the answer is no. The conclusion is
-about **scale as much as geography**: no single farm reaches the hub height that makes wind
-work, which is itself an argument for a shared village microgrid.
+Wind is evaluated on its economics at every scale this project tested, not assumed away and
+not assumed in. At Palanpur it fails on physics (1.2% capacity factor, below cut-in speed
+most of the year). At real village scale, at a genuinely windy coastal site, with a tall
+shared mast and a price below what an earlier (buggy) version of this same search once
+reported as its break-even point, it still does not pay for itself. The honest answer this
+project currently supports is that small, single-village wind is not viable anywhere in the
+demand and price ranges tested here — not a permanent claim about wind in Gujarat, but the
+actual result of every test run against the corrected code.
 
 ---
 
@@ -1160,7 +1194,118 @@ The loop runs every hour. Only the first hour of each 24-hour plan is ever execu
 
 ---
 
-## 16. Limitations and honest caveats
+## 16. The agents built for this project
+
+Three agents actually run in production; a fourth was built, measured, and deliberately
+removed. Each one calls the same underlying solver rather than replacing it — the
+architectural rule stated in Section 14 (an agent orchestrates and decides *when* to act; it
+never writes a set-point itself) holds for every one of them.
+
+### The sizing agent — bounded branch-and-bound search (`src/gramurja/search.py`)
+
+Section 7 describes the original method: an exhaustive sweep that simulates every candidate
+on the lattice. The sizing agent replaces that sweep for interactive use with a
+branch-and-bound search that is **provably exact, not approximate**: annualised capital alone
+is a valid lower bound on a candidate's total cost, because energy and carbon cost are always
+non-negative. Any candidate whose capital already exceeds the best system found so far cannot
+win and is never simulated.
+
+It is proven to agree with the exhaustive sweep at both scales it has been tested at:
+
+| Scale | Lattice | Simulations | Wall clock | Same optimum? |
+|---|---|---|---|---|
+| Farm | 120 configs | fewer, sweep wins on parallelism at this size | comparable | **Yes** |
+| Village (100 households, 20 farms, dairy, water) | 96 configs | 82 vs 96 (−15%) | 675 s vs 773 s (−13%) | **Yes** |
+
+The village-scale result is the more meaningful one: each simulation there is heavy enough
+(8,760 hours, two feeder groups, real aggregate demand) that per-simulation cost dominates
+pool overhead, which is exactly the regime where doing less work should also mean less wall
+time — and it does. This is the agent both the farm-scale "Decide the size for me" button and
+the dashboard's separate Village-Scale Validation panel call live.
+
+### The dispatch controller — MPC (Sections 2–3)
+
+Not a new agent introduced here, restated for completeness: a 24-hour receding-horizon linear
+program, re-solved every hour against the latest forecast and measured state. Every number
+the dashboard shows — cost, diesel, reliability, CO2 — comes from this solver's actual
+decisions, never a precomputed table.
+
+### The advisory agent (`src/gramurja/advisory.py`)
+
+Turns the same dispatch logic into one sentence a farmer can act on. It ranks candidate
+irrigation start hours by combining several signals at once — solar surplus, which feeder is
+cheap and available, battery state of charge, and how urgently the crop needs water — and
+separates **forcing** triggers (irrigate now regardless of cost, because the crop can't wait)
+from **discretionary** ones (a cheaper or greener hour is worth waiting for). The result is
+delivered as a briefing, optionally re-worded into Gujarati or Hindi, with the underlying
+numbers verified rather than left to the language model to restate correctly.
+
+### The monitoring agent — built, measured, removed
+
+Covered in full in Section 14: an agent that decided *when* to re-plan the dispatch, tested
+against always-re-planning MPC, found to trade a small reduction in solver calls for a real
+increase in diesel and cost, and removed rather than kept as decoration. The sizing agent
+above exists precisely because that same trade looks different when each evaluation costs
+minutes instead of milliseconds and the failure mode is a worse recommendation rather than
+shed load.
+
+### Where these agents are actually reachable
+
+All of the above run behind a live FastAPI backend (`src/gramurja/api.py`) and a React
+dashboard, not just as backend scripts:
+
+- **Configuration tab** — hardware/site/price controls call `/api/simulate` (dispatch) and
+  `/api/size` (sizing agent, farm scale) live; a "Tested Scenarios" picker reproduces five
+  specific configurations this project ran and reported a result for, including a
+  "wind turbine installed (manual)" scenario that shows a real, generating turbine on the
+  Energy Flow diagram even though the sizing agent would never choose to install it.
+- **Village Scale tab** — its own `/api/village/size` endpoint, running the sizing agent
+  against real aggregate village demand instead of one farm.
+- **Agriculture tab** — calls `/api/advice` (the advisory agent) live.
+- **Energy Flow / Telemetry tabs** — read the same dispatch series the MPC controller
+  actually produced for the current run, hour by hour.
+
+---
+
+## 17. Final evaluation summary
+
+The headline results, gathered in one place, all reproducible from the live dashboard or the
+scripts named:
+
+**Sizing agrees with exhaustive search.** Same optimum as the sweep at farm scale and at real
+village scale, with fewer simulations and (at village scale, where it's the fairer test) less
+wall-clock time. See Section 16.
+
+**Wind does not pay for itself at any tested price, scale, or site — including the best case
+constructed for it.** Farm scale, three prices down to near-free; a 40× demand-inflated farm;
+real village-scale demand at Palanpur; and the single best-case scenario — real village
+demand, Dwarka's coast, an 80 m shared mast, and a price cheaper than an earlier (buggy)
+version of this same search once reported as wind's break-even point. Wind was 0 kW in every
+recommended system and every top-5 candidate, in every one of those tests. Full detail and
+the corrected numbers are in Section 10.
+
+**Battery is a near-miss, not a rejection.** At the same best-case village scenario, adding
+50 kWh of battery costs about ₹149,000/year in capital but only saves about ₹142,000/year in
+displaced diesel and feeder imports — a loss of roughly ₹7,000/year. That's close enough that
+a slightly larger village, a slightly cheaper battery, or a slightly pricier diesel bill could
+flip the answer, which is a meaningfully different (and more defensible) finding than "the
+model doesn't like storage."
+
+**Forecast-based control keeps most of the benefit of perfect foresight.** Against a measured
+~17.5% forecast error, forecast-driven MPC reaches 100% reliability at 197 L/year of diesel
+and ₹58,810/year — versus an oracle with perfect future knowledge at 395 L and ₹79,613, and a
+status-quo baseline at 1,080 L and ₹167,737. Forecasting narrows most of the gap to the oracle
+rather than leaving the controller reacting blind.
+
+**The test suite backs all of it.** 133 tests passing, 5 intentionally `xfail`ed, covering
+simulation log shapes, the sizing search's soundness (including the `horizon_scale`
+regression written after the bug described in Section 10 was found), and the village-sharing
+model's properties. Nothing above is asserted without a test or a live, repeatable run behind
+it.
+
+---
+
+## 18. Limitations and honest caveats
 
 These are stated plainly because an evaluator will find them anyway, and because a project
 that names its own weaknesses is more trustworthy than one that doesn't.
