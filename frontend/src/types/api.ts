@@ -64,6 +64,10 @@ export interface SimulationResponse {
   };
   series: {
     load_kw: number[];
+    // Wind's raw available generation, kept distinct from solar_kw -- see api.py's
+    // comment: solar and wind are summed before the optimiser ever runs, so there is
+    // no real per-source "used" split to report, only availability.
+    wind_kw: number[];
     solar_kw: number[];
     ag_kw: number[];
     village_kw: number[];

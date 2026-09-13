@@ -8,6 +8,7 @@ import { AIOptimizer } from "../../components/dashboard/AIOptimizer";
 import { EnergyTelemetry } from "../../components/dashboard/EnergyTelemetry";
 import { AgriculturePanel } from "../../components/dashboard/AgriculturePanel";
 import { CommunityImpact } from "../../components/dashboard/CommunityImpact";
+import { VillageSizing } from "../../components/dashboard/VillageSizing";
 
 import { useDashboard } from "../../hooks/useDashboard";
 import { useEnergyData } from "../../hooks/useEnergyData";
@@ -46,6 +47,10 @@ export default function Dashboard() {
 
       {/* 3. Configuration -- site, hardware, load and prices, wired to every result below */}
       <ConfigPanel />
+
+      {/* 3b. Village-scale validation -- same bounded search, real aggregate village
+          demand instead of one farm. Its own backend endpoint, its own timing budget. */}
+      <VillageSizing />
 
       {/* 4. KPI Summary Grid */}
       <div id="results">

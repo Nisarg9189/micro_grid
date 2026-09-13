@@ -8,6 +8,7 @@ import { useSimulationContext } from "../../hooks/SimulationContext";
 import { useSizing } from "../../hooks/useSizing";
 import { SITE_PRESETS } from "../../data/presets";
 import { SizingResults } from "./SizingResults";
+import { ScenarioPicker } from "./ScenarioPicker";
 
 // Full parity with report/console.html's Controls panel: same fields, same site presets,
 // same defaults -- so the two evaluator surfaces answer the same question on the same
@@ -49,6 +50,8 @@ export function ConfigPanel() {
 
       {open && (
         <div className="mt-6 space-y-6">
+          <ScenarioPicker />
+
           <div className="grid grid-cols-1 gap-6 min-w-0 lg:grid-cols-2 xl:grid-cols-4">
             {/* Site */}
             <fieldset className="min-w-0">

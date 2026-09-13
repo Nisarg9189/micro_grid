@@ -7,7 +7,9 @@ const fmt = (v: number, digits = 0) => v.toLocaleString(undefined, {
 
 export interface SizingResultsProps {
   data: SizingResponse;
-  onApply: (candidate: SizingCandidate) => void;
+  // Optional because village-scale results have no matching /api/simulate to apply
+  // hardware back into -- the button is hidden rather than wired to a no-op.
+  onApply?: (candidate: SizingCandidate) => void;
 }
 
 // Mirrors report/console.html's SizeResult -- same tiles, same table, same one-click
@@ -30,7 +32,7 @@ export function SizingResults({ data, onApply }: SizingResultsProps) {
         {data.meta.evaluated} configurations evaluated, ranked by annualised total cost at
         99% reliability
       </div>
-      {data.meta.agent === "bounded_search" && data.meta.lattice_size != null && (
+      {data.meta.agent?.startsWith("bounded_search") && data.meta.lattice_size != null && (
         <div className="mb-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-[11px] text-emerald-800">
           <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
           <span>
@@ -62,12 +64,14 @@ export function SizingResults({ data, onApply }: SizingResultsProps) {
         ))}
       </div>
 
-      <button
-        onClick={() => onApply(r)}
-        className="mb-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F7931A] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
-      >
-        Use this hardware and run the optimiser
-      </button>
+      {onApply && (
+        <button
+          onClick={() => onApply(r)}
+          className="mb-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F7931A] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
+        >
+          Use this hardware and run the optimiser
+        </button>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-xs">

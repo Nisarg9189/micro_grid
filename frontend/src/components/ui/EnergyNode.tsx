@@ -5,7 +5,7 @@ export interface EnergyNodeProps {
   title: string;
   value: string;
   status: "ACTIVE" | "STANDBY" | "OFFLINE" | "OPTIMIZING";
-  tone?: "orange" | "green" | "blue" | "slate";
+  tone?: "orange" | "green" | "blue" | "slate" | "cyan";
   active?: boolean;
   /** A second, smaller line under the value -- e.g. a tariff or a feeder's availability. */
   caption?: string;
@@ -25,6 +25,7 @@ export function EnergyNode({
     green: "border-green-200 bg-green-50/70 text-green-700",
     blue: "border-blue-200 bg-blue-50/70 text-blue-700",
     slate: "border-slate-200 bg-slate-50 text-slate-600",
+    cyan: "border-cyan-200 bg-cyan-50/70 text-cyan-700",
   };
 
   const statusPills = {

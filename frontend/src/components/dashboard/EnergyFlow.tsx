@@ -1,5 +1,6 @@
 import {
   Sun,
+  Wind,
   BrainCircuit,
   Battery,
   Zap,
@@ -39,6 +40,8 @@ export function EnergyFlow() {
   const at = (arr?: number[]) => (arr && peak >= 0 ? arr[peak] : null);
 
   const solarKw = at(series?.solar_kw);
+  const windKw = at(series?.wind_kw);
+  const hasWind = params.wind > 0;
   const agKw = at(series?.ag_kw);
   const villageKw = at(series?.village_kw);
   const dieselKw = at(series?.diesel_kw);
@@ -83,17 +86,31 @@ export function EnergyFlow() {
         </StatusPill>
       </div>
 
-      {/* Five real sources -- each reads its own series, none combined or invented */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Real sources -- each reads its own series, none combined or invented. A wind
+          turbine only appears when one is actually installed (params.wind > 0); the
+          Solar node's own caption says plainly that dispatch is a combined figure once
+          wind is in the mix, rather than silently crediting wind's output to solar. */}
+      <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${hasWind ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
         <EnergyNode
           icon={Sun}
           title="Solar Array"
           value={fmt(solarKw, "kW")}
-          caption={`${params.solar} kWp installed`}
+          caption={hasWind ? `${params.solar} kWp -- dispatch combines this with wind` : `${params.solar} kWp installed`}
           status={solarKw != null && solarKw > 0.05 ? "ACTIVE" : "STANDBY"}
           tone="orange"
           active={hasData && solarKw != null && solarKw > 0.05}
         />
+        {hasWind && (
+          <EnergyNode
+            icon={Wind}
+            title="Wind Turbine"
+            value={fmt(windKw, "kW")}
+            caption={`${params.wind} kW installed @ ${params.hub_height}m -- raw availability, not dispatch`}
+            status={windKw != null && windKw > 0.05 ? "ACTIVE" : "STANDBY"}
+            tone="cyan"
+            active={hasData && windKw != null && windKw > 0.05}
+          />
+        )}
         <EnergyNode
           icon={Zap}
           title="Ag Feeder"
