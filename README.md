@@ -49,6 +49,39 @@ for limitations.
 
 ---
 
+## See it before you read it — the Prediction & Forecasting page
+
+Screenshots of the live app (`/` route — the Prediction page), showing the actual pipeline
+described in this document end to end, not a mockup.
+
+**The pipeline, start to end** — real historical weather in, a forecasting layer with a
+measured error, the MPC's future-looking horizon, and the four resources it dispatches:
+
+![Prediction pipeline: historical data through forecasting layer to MPC prediction horizon to best energy decision across solar, grid, battery and diesel](docs/screenshots/prediction-01-pipeline.png)
+
+**What the model predicts, and what's real data vs. a modelled assumption** — solar,
+load, feeder availability and battery need are all forecast; Open-Meteo weather is real,
+load and tariff profiles are documented model inputs, not live meter readings:
+
+![What we predict: solar/weather, load, feeder availability, battery need — and the real-data vs model-input data sources](docs/screenshots/prediction-02-what-we-predict.png)
+
+**Forecast accuracy, honestly reported** — a measured ~17.5% mean absolute error against
+historical weather, used in testing instead of assuming perfect foresight:
+
+![Forecast accuracy: ~17.5% MAE against historical weather, forecast vs actual chart](docs/screenshots/prediction-03-forecast-accuracy.png)
+
+**Why the forecast matters, and the MPC look-ahead in action hour by hour** — reacting to
+current conditions alone vs. planning ahead for a known feeder outage or demand spike:
+
+![Why prediction matters: without-forecast vs with-forecast comparison, and the MPC look-ahead example walking through six hours](docs/screenshots/prediction-04-why-prediction-matters.png)
+
+**The result** — forecast-based MPC keeps almost all of the benefit a perfect-foresight
+oracle would get, at a fraction of the diesel and cost of doing nothing:
+
+![Research finding: status quo vs oracle MPC vs forecast MPC, reliability/diesel/cost comparison, and the end-to-end prediction flow](docs/screenshots/prediction-05-mpc-lookahead-and-finding.png)
+
+---
+
 ## 1. Project overview
 
 ### What GramUrja AI is
